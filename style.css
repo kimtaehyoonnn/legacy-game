@@ -1,0 +1,15 @@
+body { background: #1a1a1a; color: #2d3436; font-family: 'Pretendard', sans-serif; overflow: hidden; margin: 0; touch-action: none; }
+#canvas { display: block; cursor: grab; background: #fdfdfd; width: 100vw; height: 100vh; } 
+#canvas:active { cursor: grabbing; }
+.ui-panel { position: absolute; z-index: 10; background: rgba(255, 255, 255, 0.95); padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); pointer-events: auto; }
+.controls { top: 20px; left: 20px; width: 300px; border-left: 5px solid #d63031; }
+.speed-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin: 10px 0; }
+.speed-btn { background: #eee; border: none; padding: 8px 0; cursor: pointer; border-radius: 6px; font-weight: bold; transition: 0.2s; font-size: 13px; }
+.speed-btn.active { background: #d63031; color: white; }
+.speed-btn.stop.active { background: #34495e; color: white; }
+
+#event-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999; background: white; padding: 25px; border-radius: 20px; display: none; width: 90vw; max-width: 450px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5); border: 4px solid #2c3e50; max-height: 85vh; overflow-y: auto; }
+.choice-btn { background: #fff; border: 2px solid #eee; padding: 15px; margin: 8px 0; border-radius: 12px; cursor: pointer; width: 100%; text-align: left; }
+.choice-btn:hover { border-color: #d63031; background: #fff5f5; }
+.trait-box { margin-top: 8px; font-size: 13px; line-height: 1.5; padding: 8px; background: #f8f9fa; border-radius: 8px; }
+#year-ui { font-size: 18px; font-weight: bold; color: #d63031; }

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Legacy: The Perfect Human</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="ui-panel controls">
+        <div style="font-weight: 900; font-size: 18px; margin-bottom: 5px;">🧬 유전자 시뮬레이터</div>
+        <div id="year-ui">가문 창시 중...</div>
+        <div id="pop-ui" style="font-size: 13px; color: #2c3e50;">인구: 1명</div>
+        <div class="speed-grid">
+            <button class="speed-btn stop" onclick="setSpeed(0, this)">정지</button>
+            <button class="speed-btn active" onclick="setSpeed(1, this)">x1</button>
+            <button class="speed-btn" onclick="setSpeed(5, this)">x5</button>
+            <button class="speed-btn" onclick="setSpeed(15, this)">x15</button>
+            <button class="speed-btn" onclick="setSpeed(50, this)">x50</button>
+        </div>
+    </div>
+
+    <div id="event-modal">
+        <h2 id="e-title">이벤트</h2>
+        <p id="e-desc">설명</p>
+        <div id="choices-container"></div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script src="Person.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
