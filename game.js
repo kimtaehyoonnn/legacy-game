@@ -5,6 +5,7 @@ let nodes = [], nextId = 0, scale = 0.5;
 let camX, camY, targetCamX, targetCamY, isSliding = false;
 let isDragging = false, lastTouchX = 0, lastTouchY = 0, initialPinchDistance = null;
 let currentSpeed = 1, monthTimer, isEventActive = false, globalMonths = 0;
+let drawCallCount = 0;  // 💡 draw() 호출 횟수 추적
 
 // 💡 특성 데이터 정의
 const TRAITS_DATA = {
@@ -49,13 +50,33 @@ function getRandomTrait(category) {
 }
 
 function getRandomVisuals() {
-    const parts = ['Ea', 'Eb', 'Ec', 'Na', 'Nb', 'Nc', 'Ma', 'Mb', 'Mc', 'Fa', 'Fb', 'Ha', 'Hb'];
+    // 💡 ASSET_CONFIG 기반 동적 선택 (Person.js에서 정의됨)
+    const getRandomAsset = (assetType) => {
+        if (assetType === 'face') {
+            return FACE_CONFIG.types[Math.floor(Math.random() * FACE_CONFIG.count)];
+        }
+        const config = ASSET_CONFIG[assetType];
+        if (!config) return null;
+        
+        const letters = [];
+        for (let i = 0; i < config.count; i++) {
+            letters.push(String.fromCharCode(65 + i));
+        }
+        const letter = letters[Math.floor(Math.random() * letters.length)];
+        
+        if (assetType === 'eyes') return `E${letter}`;
+        if (assetType === 'nose') return `N${letter}`;
+        if (assetType === 'mouth') return `M${letter}`;
+        if (assetType === 'hair') return `H${letter}`;
+        return null;
+    };
+    
     return {
-        eyes: parts[Math.floor(Math.random() * 3)],
-        nose: parts[3 + Math.floor(Math.random() * 3)],
-        mouth: parts[6 + Math.floor(Math.random() * 3)],
-        face: parts[9 + Math.floor(Math.random() * 2)],
-        hair: parts[11 + Math.floor(Math.random() * 2)]
+        eyes: getRandomAsset('eyes'),
+        nose: getRandomAsset('nose'),
+        mouth: getRandomAsset('mouth'),
+        face: getRandomAsset('face'),
+        hair: getRandomAsset('hair')
     };
 }
 
@@ -67,9 +88,9 @@ function getTierColor(tier) {
 }
 
 function updateLayout() {
-    const NODE_SPACING = 280; 
-    const PARTNER_SPACING = 200; 
-    const LEVEL_HEIGHT = 420; 
+    const NODE_SPACING = 300; 
+    const PARTNER_SPACING = 280; 
+    const LEVEL_HEIGHT = 450; 
 
     function getSubTreeWidth(node) {
         let myWidth = (node.partner !== null) ? PARTNER_SPACING : 100;
@@ -121,6 +142,9 @@ function initGame() {
     camX = canvas.width / 2; camY = 150;
     isEventActive = false; // 이벤트 잠금 초기화
     
+    // year-ui 초기값 즉시 업데이트
+    document.getElementById('year-ui').innerText = '0년째 가문 진행 중';
+    
     // founder를 화면 중앙에 명시적으로 배치
     const founderX = 0;
     const founderY = 0;
@@ -140,7 +164,10 @@ function initGame() {
     console.log("[GAME INIT] Camera pos:", camX, ",", camY);
     
     updateUI(); 
-    setSpeed(1, document.querySelectorAll('.speed-btn')[1]);
+    // 속도 버튼 선택 후 타이머 시작
+    const speedBtn = document.querySelectorAll('.speed-btn')[1];
+    if (speedBtn) setSpeed(1, speedBtn);
+    else console.error("[ERROR] Speed button not found!");
 }
 
 function handleDisease(n) {
@@ -168,6 +195,8 @@ function handleDisease(n) {
 function startTimers() {
     if(monthTimer) clearInterval(monthTimer);
     if(currentSpeed === 0) return; 
+    
+    console.log("[startTimers] 타이머 시작, currentSpeed:", currentSpeed);
 
     monthTimer = setInterval(() => {
         if(isEventActive) return;
@@ -188,7 +217,8 @@ function startTimers() {
                 }
             }
         }
-        document.getElementById('year-ui').innerText = `${Math.floor(globalMonths/12)}년째 가문 진행 중`;
+        const yearText = `${Math.floor(globalMonths/12)}년째 가문 진행 중`;
+        document.getElementById('year-ui').innerText = yearText;
     }, 1000 / currentSpeed);
 }
 
@@ -316,7 +346,13 @@ function setSpeed(s, btn) { currentSpeed = s; document.querySelectorAll('.speed-
 function updateCamera() { if (isSliding) { camX += (targetCamX - camX) * 0.1; camY += (targetCamY - camY) * 0.1; if (Math.abs(targetCamX - camX) < 1) isSliding = false; } }
 
 window.addEventListener('mousedown', () => isDragging = true);
-window.addEventListener('mousemove', e => { if (isDragging) { camX += e.movementX; camY += e.movementY; isSliding = false; } });
+window.addEventListener('mousemove', e => { 
+    if (isDragging) { 
+        camX += e.movementX; 
+        camY += e.movementY; 
+        isSliding = false;
+    }
+});
 window.addEventListener('mouseup', () => isDragging = false);
 
 canvas.addEventListener('touchstart', e => { if (e.touches.length === 2) { initialPinchDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); isDragging = false; } else { isDragging = true; lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY; } }, {passive: false});
@@ -333,18 +369,49 @@ function animate() {
     
     ctx.lineWidth = 3;
     nodes.forEach(n => {
-        if (!n.isMain || !n.isAlive) ctx.strokeStyle = "rgba(203, 213, 224, 0.3)"; else ctx.strokeStyle = "#cbd5e0";
+        // 📌 부모→자녀 연결선 그리기
         if(n.parents.length) {
             const p1 = nodes.find(node => node.id === n.parents[0]);
             if(p1) {
                 const partner = nodes.find(node => node.id === p1.partner);
-                const midX = partner ? (p1.x + partner.x) / 2 : p1.x; const midY = partner ? (p1.y + partner.y) / 2 : p1.y;
-                ctx.beginPath(); ctx.moveTo(n.x, n.y - n.radius); ctx.bezierCurveTo(n.x, n.y - 180, midX, midY + 180, midX, midY); ctx.stroke(); 
+                const midX = partner ? (p1.x + partner.x) / 2 : p1.x; 
+                const midY = partner ? (p1.y + partner.y) / 2 : p1.y;
+                
+                // 💡 선의 굵기와 색상: 생존 여부에 따라 다르게
+                let lineWidth = 3;
+                let strokeColor = "#cbd5e0";
+                
+                if (!p1.isAlive) {
+                    strokeColor = "rgba(203, 213, 224, 0.2)";
+                    lineWidth = 2;
+                } else if (p1.isHead) {
+                    strokeColor = "#d63031";  // 현 가주: 빨강
+                    lineWidth = 4;
+                } else if (p1.isMarried && n.gender === 'M' && nodes.find(nn => nn.id === p1.partner)?.isAlive) {
+                    strokeColor = "#3498db";  // 결혼한 가주: 파랑
+                    lineWidth = 3.5;
+                }
+                
+                ctx.lineWidth = lineWidth;
+                ctx.strokeStyle = strokeColor;
+                ctx.beginPath();
+                ctx.moveTo(n.x, n.y - n.radius);
+                ctx.bezierCurveTo(n.x, n.y - 180, midX, midY + 180, midX, midY);
+                ctx.stroke();
             }
         }
+        
+        // 📌 부부 연결선 (가로선)
         if(n.partner !== null && n.gender === 'M') {
             const p = nodes.find(node => node.id === n.partner);
-            if(p) { ctx.beginPath(); ctx.moveTo(n.x + n.radius, n.y); ctx.lineTo(p.x - p.radius, p.y); ctx.stroke(); }
+            if(p) {
+                ctx.lineWidth = n.isHead ? 3.5 : 2.5;
+                ctx.strokeStyle = n.isHead ? "#d63031" : "#9b59b6";  // 가주는 빨강, 아니면 보라
+                ctx.beginPath();
+                ctx.moveTo(n.x + n.radius, n.y);
+                ctx.lineTo(p.x - p.radius, p.y);
+                ctx.stroke();
+            }
         }
     });
 
@@ -355,7 +422,17 @@ function animate() {
 
 window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; initGame(); });
 initGame();
-animate();
+
+// 📌 이미지 로드 완료 후 animate() 시작
+function startAnimate() {
+    if (imagesLoaded < totalImages) {
+        requestAnimationFrame(startAnimate);
+        return;
+    }
+    console.log(`[게임 시작] 모든 이미지 로드 완료! (${imagesLoaded}/${totalImages})`);
+    animate();
+}
+startAnimate();
 
 // 실시간 진단 로깅 (3초마다)
 setInterval(() => {
@@ -363,11 +440,16 @@ setInterval(() => {
         const founder = nodes[0];
         console.log("[DIAGNOSIS] === 3초 진단 ===");
         console.log("[DIAGNOSIS] 생존 인구:", nodes.filter(n => n.isAlive).length);
-        console.log("[DIAGNOSIS] 시조:", founder.name, ", 나이:", founder.age);
-        console.log("[DIAGNOSIS] 시조 좌표 (x,y):", founder.x.toFixed(1), ",", founder.y.toFixed(1));
-        console.log("[DIAGNOSIS] 시조 재위치 (targetX,targetY):", founder.targetX.toFixed(1), ",", founder.targetY.toFixed(1));
+        console.log("[DIAGNOSIS] 시조 정보:");
+        console.log("  - 이름:", founder.name, ", ID:", founder.id);
+        console.log("  - 나이:", founder.age, ", isAlive:", founder.isAlive, ", isMain:", founder.isMain);
+        console.log("  - 좌표 (x,y):", founder.x.toFixed(1), ",", founder.y.toFixed(1));
+        console.log("  - 재위치 (targetX,targetY):", founder.targetX.toFixed(1), ",", founder.targetY.toFixed(1));
+        console.log("  - isMarried:", founder.isMarried, ", partner:", founder.partner);
         console.log("[DIAGNOSIS] 이벤트 잠금:", isEventActive);
         console.log("[DIAGNOSIS] 경과 월:", globalMonths, "(" + Math.floor(globalMonths/12) + "년)");
         console.log("[DIAGNOSIS] 게임 속도:", currentSpeed);
+        console.log("[DIAGNOSIS] draw() 호출 횟수:", drawCallCount, "(매 프레임)");
+        drawCallCount = 0; // 리셋
     }
 }, 3000);

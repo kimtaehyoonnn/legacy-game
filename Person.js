@@ -1,46 +1,94 @@
-// Person.js 상단에 필요한 변수들을 안전하게 선언합니다.
-let nextId = typeof nextId === 'undefined' ? 0 : nextId;
-let currentSpeed = typeof currentSpeed === 'undefined' ? 1 : currentSpeed;
-let isEventActive = typeof isEventActive === 'undefined' ? false : isEventActive;
-
-// 💡 이미지 에셋 로딩 (대소문자/이름 주의!)
-const characterAssets = {
-    face: new Image(),
-    eyes: new Image(),
-    nose: new Image(),
-    mouth: new Image(),
-    hair: new Image()
+// 💡 에셋 설정 (추후 NoseB~NoseE 등 추가 시 여기만 수정)
+const ASSET_CONFIG = {
+    eyes: { count: 5, prefix: 'Eye' },      // EyeA~EyeE (5가지)
+    nose: { count: 1, prefix: 'Nose' },     // NoseA (1가지)
+    mouth: { count: 1, prefix: 'Mouth' },   // MouthA (1가지)
+    hair: { count: 1, prefix: 'Hair' }      // HairA (1가지)
 };
 
-// 이미지 로딩 상태 추적
-let imagesLoaded = 0;
-let totalImages = 5;
+const FACE_CONFIG = {
+    count: 5,
+    types: ['Fa', 'Fb', 'Fc', 'Fd', 'Fe']   // FaceA~FaceE (5가지)
+};
 
-// 이미지 로드 콜백
-Object.keys(characterAssets).forEach(key => {
-    characterAssets[key].onload = () => {
-        imagesLoaded++;
-        console.log(`[이미지 로드] ${key}A.png 로드 완료 (${imagesLoaded}/${totalImages})`);
+// 💡 이미지 에셋 로딩 (동적)
+const characterAssets = {
+    face: {},
+    eyes: {},
+    nose: {},
+    mouth: {},
+    hair: {}
+};
+
+// 로드된 이미지 개수 추적
+let imagesLoaded = 0;
+let totalImages = FACE_CONFIG.count + 
+                  Object.values(ASSET_CONFIG).reduce((sum, cfg) => sum + cfg.count, 0);
+
+console.log(`[이미지 로드] 총 ${totalImages}개 에셋 로드 예정...`);
+
+// 🔄 동적 이미지 로드 함수
+function loadImage(src, onLoad, onError) {
+    const img = new Image();
+    img.onload = () => {
+        console.log(`[이미지 로드] ${src} OK - ${img.naturalWidth}x${img.naturalHeight}`);
+        onLoad();
     };
-    characterAssets[key].onerror = () => {
-        console.warn(`[이미지 오류] ${key}A.png 로드 실패 - Fallback 사용`);
+    img.onerror = () => {
+        console.error(`[이미지 오류] ${src} 실패 - 파일 없거나 손상됨`);
+        onError();
     };
+    img.src = src;
+    return img;
+}
+
+// 1️⃣ 얼굴 이미지 로드
+FACE_CONFIG.types.forEach(faceType => {
+    characterAssets.face[faceType] = loadImage(
+        `images/${faceType}.png`,
+        () => {
+            imagesLoaded++;
+            const img = characterAssets.face[faceType];
+            console.log(`[Face 로드] ${faceType}.png 완료 (${imagesLoaded}/${totalImages}) - 크기: ${img.naturalWidth}x${img.naturalHeight}`);
+        },
+        () => {
+            console.warn(`[Face 오류] ${faceType}.png 실패`);
+        }
+    );
 });
 
-// 파일명과 100% 일치해야 합니다.
-characterAssets.face.src = "images/FaceA.png";
-characterAssets.eyes.src = "images/EyeA.png";
-characterAssets.nose.src = "images/NoseA.png";
-characterAssets.mouth.src = "images/MouthA.png";
-characterAssets.hair.src = "images/HairA.png";
-
-console.log("[이미지 로드] 캐릭터 이미지 로딩 시작...");
+// 2️⃣ 다른 에셋 로드
+Object.entries(ASSET_CONFIG).forEach(([assetType, config]) => {
+    for (let i = 0; i < config.count; i++) {
+        const letter = String.fromCharCode(97 + i); // 0→a, 1→b, ... (소문자!)
+        const prefix = assetType === 'eyes' ? 'E' :
+                      assetType === 'nose' ? 'N' :
+                      assetType === 'mouth' ? 'M' :
+                      assetType === 'hair' ? 'H' : '';
+        
+        const code = `${prefix}${letter.toUpperCase()}`; // Ea, Eb, ... or Na, Nb, ...
+        const filename = `${prefix}${letter}`; // ea, eb, ... or na, nb, ...
+        
+        characterAssets[assetType][code] = loadImage(
+            `images/${filename}.png`,
+            () => {
+                imagesLoaded++;
+                console.log(`[이미지 로드] ${filename}.png 완료 (${imagesLoaded}/${totalImages})`);
+            },
+            () => {
+                console.warn(`[이미지 오류] ${filename}.png 실패`);
+            }
+        );
+    }
+});
 
 const NAMES = { M: ["강민", "준호", "도윤", "시우", "태양", "지훈", "현우", "건우", "민재", "지한"], F: ["서연", "민서", "지아", "하윤", "아린", "수아", "유나", "지윤", "예원", "다인"] };
 
 function getTierColor(tier) {
-    if(tier === 'SSR') return '#e67e22'; if(tier === 'SR') return '#9b59b6';
-    if(tier === 'R') return '#2980b9'; return '#7f8c8d';
+    if(tier === 'SSR') return '#e67e22'; 
+    if(tier === 'SR') return '#9b59b6';
+    if(tier === 'R') return '#2980b9'; 
+    return '#7f8c8d';
 }
 
 class PersonNode {
@@ -76,16 +124,14 @@ class PersonNode {
             val: { tier: 'N', name: '현실주의' }, 
             hlt: { tier: 'N', name: '평범한 체력' } 
         };
-        this.visuals = { eyes: 'Ea', nose: 'Na', mouth: 'Ma', face: 'Fa' };
+        this.visuals = { eyes: 'Ea', nose: 'Na', mouth: 'Ma', face: 'Fa', hair: 'Ha' };
         
-        console.log(`[PersonNode] ID:${this.id}, 이름:${name}, 좌표:(${this.x},${this.y})`);
+        console.log(`[PersonNode] ID:${this.id}, 이름:${name}, 초기좌표:(${this.x},${this.y}), targetX:${this.targetX}, targetY:${this.targetY}`);
     }
 
-    // 💡 scale이 안 넘어와도 기본값 1을 쓰도록 수정
     draw(ctx, scale = 1) {
         // 좌표 유효성 검증
         if (typeof this.x !== 'number' || isNaN(this.x) || typeof this.y !== 'number' || isNaN(this.y)) {
-            console.warn(`[draw] ${this.name}: 유효하지 않은 좌표 감지 x=${this.x}, y=${this.y}`);
             return;
         }
 
@@ -94,6 +140,7 @@ class PersonNode {
 
         if (this.isAlive && !isEventActive && currentSpeed > 0) this.pulse += 0.05 * currentSpeed;
         const s = this.isAlive ? 1 + Math.sin(this.pulse) * 0.03 : 1;
+        const imgSize = this.radius * 2;
 
         ctx.save();
         try {
@@ -102,54 +149,86 @@ class PersonNode {
             
             if (!this.isAlive || !this.isMain) ctx.globalAlpha = 0.3;
 
-            // 💡 캐릭터 본체 그리기
-            const imgSize = this.radius * 2;
+            // 배경: 원형 그리기
+            this._drawFallback(ctx);
             
-            // 이미지 기반 렌더링 시도
-            if (characterAssets && characterAssets.face && characterAssets.face.complete && characterAssets.face.naturalWidth !== 0) {
-                try {
-                    ctx.drawImage(characterAssets.face, -this.radius, -this.radius, imgSize, imgSize);
-                    if (characterAssets.mouth && characterAssets.mouth.complete) ctx.drawImage(characterAssets.mouth, -this.radius, -this.radius, imgSize, imgSize);
-                    if (characterAssets.nose && characterAssets.nose.complete) ctx.drawImage(characterAssets.nose, -this.radius, -this.radius, imgSize, imgSize);
-                    if (characterAssets.eyes && characterAssets.eyes.complete) ctx.drawImage(characterAssets.eyes, -this.radius, -this.radius, imgSize, imgSize);
-                    if (characterAssets.hair && characterAssets.hair.complete) ctx.drawImage(characterAssets.hair, -this.radius, -this.radius, imgSize, imgSize);
-                } catch (e) {
-                    console.warn(`[draw] 이미지 드로우 실패, Fallback 사용: ${e.message}`);
-                    this._drawFallback(ctx);
+            // 전경: 이미지 그리기
+            ctx.globalAlpha = 1;
+            
+            // 얼굴
+            const faceType = this.visuals.face || 'Fa';
+            const faceImg = characterAssets.face[faceType];
+            if (faceImg && faceImg.complete && faceImg.naturalWidth) {
+                ctx.drawImage(faceImg, -this.radius, -this.radius, imgSize, imgSize);
+                if (this.id === 0 && !window.faceRenderedOnce) {
+                    console.log(`✅ [Face 렌더링] ${faceType} 성공`);
+                    window.faceRenderedOnce = true;
                 }
-            } else {
-                // 💡 이미지가 아직 안 왔다면 원형이라도 그려서 "살아있음"을 증명!
-                this._drawFallback(ctx);
+            } else if (this.id === 0 && !window.faceFailedOnce) {
+                console.warn(`❌ [Face 렌더링] ${faceType} 실패 - complete: ${faceImg?.complete}, width: ${faceImg?.naturalWidth}`);
+                window.faceFailedOnce = true;
+            }
+            
+            // 입
+            const mouthCode = this.visuals.mouth || 'Ma';
+            const mouthImg = characterAssets.mouth[mouthCode];
+            if (mouthImg && mouthImg.complete && mouthImg.naturalWidth) {
+                ctx.drawImage(mouthImg, -this.radius, -this.radius, imgSize, imgSize);
+            }
+            
+            // 코
+            const noseCode = this.visuals.nose || 'Na';
+            const noseImg = characterAssets.nose[noseCode];
+            if (noseImg && noseImg.complete && noseImg.naturalWidth) {
+                ctx.drawImage(noseImg, -this.radius, -this.radius, imgSize, imgSize);
+            }
+            
+            // 눈
+            const eyesCode = this.visuals.eyes || 'Ea';
+            const eyesImg = characterAssets.eyes[eyesCode];
+            if (eyesImg && eyesImg.complete && eyesImg.naturalWidth) {
+                ctx.drawImage(eyesImg, -this.radius, -this.radius, imgSize, imgSize);
+            }
+            
+            // 머리
+            const hairCode = this.visuals.hair || 'Ha';
+            const hairImg = characterAssets.hair[hairCode];
+            if (hairImg && hairImg.complete && hairImg.naturalWidth) {
+                ctx.drawImage(hairImg, -this.radius, -this.radius, imgSize, imgSize);
             }
 
+            // 왕관
             if (this.isHead && this.isAlive) {
                 ctx.font = "24px sans-serif";
                 ctx.fillText("👑", 0, -this.radius - 10);
             }
 
-            // 하단 텍스트 및 특성 UI
+            // 텍스트: 이름 및 나이
             let startY = this.radius + 20;
-            ctx.fillStyle = "#2d3436"; ctx.font = "bold 15px sans-serif"; ctx.textAlign = "center";
+            ctx.fillStyle = "#2d3436";
+            ctx.font = "bold 15px sans-serif";
+            ctx.textAlign = "center";
             let diseaseIcon = this.disease ? " 🤒" : "";
             ctx.fillText(`${this.name}(${this.age})${diseaseIcon}`, 0, startY);
             
-            startY += 12; 
+            // 텍스트: 특성
+            startY += 12;
             ctx.font = "bold 11px sans-serif";
             ctx.textBaseline = "middle";
 
             const traitsList = [
-                { prefix: '외', ...this.traits.app }, 
-                { prefix: '성', ...this.traits.per }, 
+                { prefix: '외', ...this.traits.app },
+                { prefix: '성', ...this.traits.per },
                 { prefix: '가', ...this.traits.val },
                 { prefix: '건', ...this.traits.hlt }
             ];
 
             traitsList.forEach((t, i) => {
-                if(!t.name) return;
+                if (!t.name) return;
                 const text = `[${t.prefix}] ${t.name}`;
                 const textWidth = ctx.measureText(text).width;
-                const boxWidth = textWidth + 16; 
-                const boxY = startY + (i * 24); 
+                const boxWidth = textWidth + 16;
+                const boxY = startY + (i * 24);
                 
                 ctx.fillStyle = getTierColor(t.tier);
                 if (ctx.roundRect) {
@@ -163,19 +242,20 @@ class PersonNode {
                 ctx.fillText(text, 0, boxY + 10);
             });
         } catch (e) {
-            console.error(`[draw] ${this.name} 그리기 중 오류:`, e);
+            console.error(`[draw] ${this.name} 오류:`, e);
         } finally {
             ctx.restore();
         }
     }
 
     _drawFallback(ctx) {
+        // 📌 배경: 매우 투명한 원 테두리만 (Face 이미지가 보이도록)
         ctx.beginPath(); 
         ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.gender === 'M' ? "#4a69bd" : "#ff7979";
+        ctx.fillStyle = this.gender === 'M' ? "rgba(74, 105, 189, 0.1)" : "rgba(255, 121, 121, 0.1)";  // 매우 투명
         ctx.fill(); 
-        ctx.strokeStyle = "white"; 
-        ctx.lineWidth = 5; 
+        ctx.strokeStyle = this.gender === 'M' ? "rgba(74, 105, 189, 0.3)" : "rgba(255, 121, 121, 0.3)";  // 약간 투명
+        ctx.lineWidth = 2;
         ctx.stroke();
     }
 
