@@ -6,6 +6,66 @@ let camX, camY, targetCamX, targetCamY, isSliding = false;
 let isDragging = false, lastTouchX = 0, lastTouchY = 0, initialPinchDistance = null;
 let currentSpeed = 1, monthTimer, isEventActive = false, globalMonths = 0;
 
+// 💡 특성 데이터 정의
+const TRAITS_DATA = {
+    app: [
+        { tier: 'SSR', name: '절세미인' },
+        { tier: 'SSR', name: '꽃미남' },
+        { tier: 'SR', name: '잘생긴편' },
+        { tier: 'SR', name: '예쁜편' },
+        { tier: 'R', name: '괜찮은외모' },
+        { tier: 'R', name: '평범한외모' }
+    ],
+    per: [
+        { tier: 'SSR', name: '강단 있음' },
+        { tier: 'SSR', name: '따뜻한마음' },
+        { tier: 'SR', name: '신중함' },
+        { tier: 'SR', name: '적극적' },
+        { tier: 'R', name: '소심함' },
+        { tier: 'R', name: '평범한성격' }
+    ],
+    val: [
+        { tier: 'SSR', name: '명예심강함' },
+        { tier: 'SSR', name: '의리있음' },
+        { tier: 'SR', name: '현실주의' },
+        { tier: 'SR', name: '낙관주의' },
+        { tier: 'R', name: '이기주의' },
+        { tier: 'R', name: '무관심' }
+    ],
+    hlt: [
+        { tier: 'SSR', name: '철강체' },
+        { tier: 'SSR', name: '건강함' },
+        { tier: 'SR', name: '보통체력' },
+        { tier: 'SR', name: '약간약함' },
+        { tier: 'R', name: '허약체질' },
+        { tier: 'R', name: '병약함' }
+    ]
+};
+
+function getRandomTrait(category) {
+    if (!TRAITS_DATA[category]) return { tier: 'N', name: '평범함' };
+    const traits = TRAITS_DATA[category];
+    return traits[Math.floor(Math.random() * traits.length)];
+}
+
+function getRandomVisuals() {
+    const parts = ['Ea', 'Eb', 'Ec', 'Na', 'Nb', 'Nc', 'Ma', 'Mb', 'Mc', 'Fa', 'Fb', 'Ha', 'Hb'];
+    return {
+        eyes: parts[Math.floor(Math.random() * 3)],
+        nose: parts[3 + Math.floor(Math.random() * 3)],
+        mouth: parts[6 + Math.floor(Math.random() * 3)],
+        face: parts[9 + Math.floor(Math.random() * 2)],
+        hair: parts[11 + Math.floor(Math.random() * 2)]
+    };
+}
+
+function getTierColor(tier) {
+    if(tier === 'SSR') return '#e67e22'; 
+    if(tier === 'SR') return '#9b59b6';
+    if(tier === 'R') return '#2980b9'; 
+    return '#7f8c8d';
+}
+
 function updateLayout() {
     const NODE_SPACING = 280; 
     const PARTNER_SPACING = 200; 
@@ -59,11 +119,25 @@ function initGame() {
     canvas.height = window.innerHeight;
     nodes = []; nextId = 0; globalMonths = 0;
     camX = canvas.width / 2; camY = 150;
+    isEventActive = false; // 이벤트 잠금 초기화
     
-    const founder = new PersonNode("1대 가주", 'M', 0, 0, 1, 19, [], true, true, false); 
+    // founder를 화면 중앙에 명시적으로 배치
+    const founderX = 0;
+    const founderY = 0;
+    const founder = new PersonNode("1대 가주", 'M', founderX, founderY, 0, 19, [], true, true, false); 
     founder.traits = { app: getRandomTrait('app'), per: getRandomTrait('per'), val: getRandomTrait('val'), hlt: getRandomTrait('hlt') };
     founder.visuals = getRandomVisuals();
     nodes.push(founder);
+    
+    // 레이아웃 업데이트로 targetX, targetY 설정
+    updateLayout();
+    
+    // 캐릭터 좌표 확인 로그
+    console.log("[GAME INIT] Founder 생성 완료");
+    console.log("[GAME INIT] Founder x:", founder.x, ", y:", founder.y);
+    console.log("[GAME INIT] Founder targetX:", founder.targetX, ", targetY:", founder.targetY);
+    console.log("[GAME INIT] Canvas size:", canvas.width, "x", canvas.height);
+    console.log("[GAME INIT] Camera pos:", camX, ",", camY);
     
     updateUI(); 
     setSpeed(1, document.querySelectorAll('.speed-btn')[1]);
@@ -282,18 +356,18 @@ function animate() {
 window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; initGame(); });
 initGame();
 animate();
-// game.js 맨 밑에 붙여넣으세요!
+
+// 실시간 진단 로깅 (3초마다)
 setInterval(() => {
-    if (typeof people !== 'undefined') {
-        console.log("--- 긴급 진단 ---");
-        console.log("현재 생존 인구:", people.length);
-        if (people.length > 0) {
-            console.log("시조 이름:", people[0].name);
-            console.log("시조 좌표:", people[0].x, people[0].y);
-            console.log("시조 나이:", people[0].age);
-        }
-        if (typeof isEventActive !== 'undefined') {
-            console.log("이벤트 잠금 상태:", isEventActive);
-        }
+    if (nodes && nodes.length > 0) {
+        const founder = nodes[0];
+        console.log("[DIAGNOSIS] === 3초 진단 ===");
+        console.log("[DIAGNOSIS] 생존 인구:", nodes.filter(n => n.isAlive).length);
+        console.log("[DIAGNOSIS] 시조:", founder.name, ", 나이:", founder.age);
+        console.log("[DIAGNOSIS] 시조 좌표 (x,y):", founder.x.toFixed(1), ",", founder.y.toFixed(1));
+        console.log("[DIAGNOSIS] 시조 재위치 (targetX,targetY):", founder.targetX.toFixed(1), ",", founder.targetY.toFixed(1));
+        console.log("[DIAGNOSIS] 이벤트 잠금:", isEventActive);
+        console.log("[DIAGNOSIS] 경과 월:", globalMonths, "(" + Math.floor(globalMonths/12) + "년)");
+        console.log("[DIAGNOSIS] 게임 속도:", currentSpeed);
     }
-}, 3000); // 3초마다 자동으로 상태를 체크해서 콘솔에 뿌려줍니다.
+}, 3000);
