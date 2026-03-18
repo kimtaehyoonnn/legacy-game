@@ -26,17 +26,15 @@
         <div id="choices-container"></div>
     </div>
 
-    <canvas id="canvas"></canvas>
-
-    <script src="Person.js"></script>
-    <script src="game.js"></script>
-  <div id="character-canvas">
+    <div id="character-canvas" style="position: absolute; z-index: 9999; pointer-events: none;">
         <img src="images/FaceA.png" class="character-part" alt="얼굴형">
         <img src="images/MouthA.png" class="character-part" alt="입">
         <img src="images/NoseA.png" class="character-part" alt="코">
         <img src="images/EyeA.png" class="character-part" alt="눈">
         <img src="images/HairA.png" class="character-part" alt="머리카락">
     </div>
+
+    <canvas id="canvas"></canvas>
 
     <script src="Person.js"></script>
     <script src="game.js"></script>
