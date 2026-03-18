@@ -282,3 +282,18 @@ function animate() {
 window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; initGame(); });
 initGame();
 animate();
+// game.js 맨 밑에 붙여넣으세요!
+setInterval(() => {
+    if (typeof people !== 'undefined') {
+        console.log("--- 긴급 진단 ---");
+        console.log("현재 생존 인구:", people.length);
+        if (people.length > 0) {
+            console.log("시조 이름:", people[0].name);
+            console.log("시조 좌표:", people[0].x, people[0].y);
+            console.log("시조 나이:", people[0].age);
+        }
+        if (typeof isEventActive !== 'undefined') {
+            console.log("이벤트 잠금 상태:", isEventActive);
+        }
+    }
+}, 3000); // 3초마다 자동으로 상태를 체크해서 콘솔에 뿌려줍니다.
