@@ -13,3 +13,22 @@ body { background: #1a1a1a; color: #2d3436; font-family: 'Pretendard', sans-seri
 .choice-btn:hover { border-color: #d63031; background: #fff5f5; }
 .trait-box { margin-top: 8px; font-size: 13px; line-height: 1.5; padding: 8px; background: #f8f9fa; border-radius: 8px; }
 #year-ui { font-size: 18px; font-weight: bold; color: #d63031; }
+/* 캐릭터 렌더링 컨테이너 (도화지) */
+#character-canvas {
+  width: 300px; /* 모바일에서 보기 좋게 300px로 줄여서 보여줍니다 */
+  height: 300px;
+  position: relative; /* 자식 이미지들의 기준점이 됩니다 */
+  margin: 20px auto; /* 화면 가운데 정렬 */
+  background-color: #f8f9fa; /* 캐릭터 뒤에 살짝 깔리는 배경색 */
+  border-radius: 15px; /* 배경 모서리를 둥글게 */
+  overflow: hidden;
+}
+
+/* 겹쳐질 부위별 이미지들 */
+.character-part {
+  position: absolute; /* 도화지 기준 같은 위치에 강제로 겹침 */
+  top: 0;
+  left: 0;
+  width: 100%; /* 도화지 크기에 딱 맞춤 */
+  height: 100%;
+}
