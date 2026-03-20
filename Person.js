@@ -1,9 +1,9 @@
 // 💡 에셋 설정 (추후 NoseB~NoseE 등 추가 시 여기만 수정)
 const ASSET_CONFIG = {
     eyes: { count: 5, prefix: 'Eye' },      // EyeA~EyeE (5가지)
-    nose: { count: 1, prefix: 'Nose' },     // NoseA (1가지)
-    mouth: { count: 1, prefix: 'Mouth' },   // MouthA (1가지)
-    hair: { count: 1, prefix: 'Hair' }      // HairA (1가지)
+    nose: { count: 5, prefix: 'Nose' },     // NoseA~NoseE (5가지)
+    mouth: { count: 5, prefix: 'Mouth' },   // MouthA~MouthE (5가지)
+    hair: { count: 5, prefix: 'Hair' }      // HairA~HairE (5가지)
 };
 
 const FACE_CONFIG = {
@@ -144,7 +144,10 @@ class PersonNode {
 
         if (this.isAlive && !isEventActive && currentSpeed > 0) this.pulse += 0.05 * currentSpeed;
         const s = this.isAlive ? 1 + Math.sin(this.pulse) * 0.03 : 1;
-        const imgSize = this.radius * 2;
+        
+        // 💡 이미지 비율 512×710을 유지하며 렌더링 (30% 확대)
+        const imgHeight = this.radius * 2.6;
+        const imgWidth = imgHeight * (512 / 710); // 약 90×126
 
         ctx.save();
         try {
@@ -153,8 +156,7 @@ class PersonNode {
             
             if (!this.isAlive || !this.isMain) ctx.globalAlpha = 0.3;
 
-            // 배경: 원형 그리기
-            this._drawFallback(ctx);
+            // 💡 뒤의 원형 배경 제거됨
             
             // 전경: 이미지 그리기
             ctx.globalAlpha = 1;
@@ -163,7 +165,7 @@ class PersonNode {
             const faceType = this.visuals.face || 'Fa';
             const faceImg = characterAssets.face[faceType];
             if (faceImg && faceImg.complete && faceImg.naturalWidth) {
-                ctx.drawImage(faceImg, -this.radius, -this.radius, imgSize, imgSize);
+                ctx.drawImage(faceImg, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
                 if (this.id === 0 && !window.faceRenderedOnce) {
                     console.log(`✅ [Face 렌더링] ${faceType} 성공`);
                     window.faceRenderedOnce = true;
@@ -177,28 +179,28 @@ class PersonNode {
             const mouthCode = this.visuals.mouth || 'Ma';
             const mouthImg = characterAssets.mouth[mouthCode];
             if (mouthImg && mouthImg.complete && mouthImg.naturalWidth) {
-                ctx.drawImage(mouthImg, -this.radius, -this.radius, imgSize, imgSize);
+                ctx.drawImage(mouthImg, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
             }
             
             // 코
             const noseCode = this.visuals.nose || 'Na';
             const noseImg = characterAssets.nose[noseCode];
             if (noseImg && noseImg.complete && noseImg.naturalWidth) {
-                ctx.drawImage(noseImg, -this.radius, -this.radius, imgSize, imgSize);
+                ctx.drawImage(noseImg, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
             }
             
             // 눈
             const eyesCode = this.visuals.eyes || 'Ea';
             const eyesImg = characterAssets.eyes[eyesCode];
             if (eyesImg && eyesImg.complete && eyesImg.naturalWidth) {
-                ctx.drawImage(eyesImg, -this.radius, -this.radius, imgSize, imgSize);
+                ctx.drawImage(eyesImg, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
             }
             
             // 머리
             const hairCode = this.visuals.hair || 'Ha';
             const hairImg = characterAssets.hair[hairCode];
             if (hairImg && hairImg.complete && hairImg.naturalWidth) {
-                ctx.drawImage(hairImg, -this.radius, -this.radius, imgSize, imgSize);
+                ctx.drawImage(hairImg, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
             }
 
             // 왕관
