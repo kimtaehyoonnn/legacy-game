@@ -116,6 +116,10 @@ class PersonNode {
         
         this.menopauseAge = this.gender === 'F' ? Math.floor(Math.random() * 7) + 47 : null;
         this.disease = null;
+        this.eventState = {
+            firedCodes: new Set(),
+            choiceByCode: {}
+        };
         
         // 💡 null 에러 방지를 위해 기본값 설정
         this.traits = { 
