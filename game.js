@@ -8,6 +8,9 @@ let currentSpeed = 1, monthTimer, isEventActive = false, globalMonths = 0;
 let drawCallCount = 0;  // 💡 draw() 호출 횟수 추적
 let yearlyEventQueue = [];
 let GENERAL_EVENT_DEFINITIONS = [];
+const INITIAL_FAMILY_ASSET_KRW = 10_000_000;
+let familyAssetKrw = INITIAL_FAMILY_ASSET_KRW;
+let lastMonthlyCashflowKrw = 0;
 const EVENT_GROUP_OPS = new Set(['and', 'or']);
 const EVENT_LEAF_OPERATORS = new Set(['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in']);
 const EVENT_RESULT_TYPES = new Set(['none', 'disease', 'trait_delta']);
@@ -82,6 +85,63 @@ function buildGameContext() {
         totalPopulation: nodes.length,
         alivePopulation: nodes.filter(n => n.isAlive).length
     };
+}
+
+function getFixedMonthlyExpenseKrw(age) {
+    const normalizedAge = Number.isFinite(age) ? Math.max(0, Math.floor(age)) : 0;
+    if (normalizedAge < 20) return 1_000_000;
+    if (normalizedAge < 30) return 1_500_000;
+    if (normalizedAge < 55) return 2_500_000;
+    if (normalizedAge < 70) return 1_500_000;
+    return 1_000_000;
+}
+
+function getFixedMonthlyIncomeKrw() {
+    // 직업 시스템 미구현 단계(v1)에서는 고정소득 0원
+    return 0;
+}
+
+function isAliveAndValidInGameFamilyMember(person) {
+    return !!person && person.isAlive && person.isMain;
+}
+
+function settleMonthlyFamilyAsset() {
+    let monthlyCashflowKrw = 0;
+    for (const person of nodes) {
+        if (!isAliveAndValidInGameFamilyMember(person)) continue;
+        monthlyCashflowKrw += getFixedMonthlyIncomeKrw(person) - getFixedMonthlyExpenseKrw(person.age);
+    }
+    lastMonthlyCashflowKrw = monthlyCashflowKrw;
+    familyAssetKrw += monthlyCashflowKrw;
+}
+
+function formatKoreanMoneyUnits(amountKrw) {
+    const safeAmount = Number.isFinite(amountKrw) ? Math.trunc(amountKrw) : 0;
+    const isNegative = safeAmount < 0;
+    let remaining = Math.abs(safeAmount);
+
+    const units = [
+        { value: 1_000_000_000_000, label: '조' },
+        { value: 100_000_000, label: '억' },
+        { value: 10_000, label: '만' }
+    ];
+
+    const parts = [];
+    for (const unit of units) {
+        if (remaining < unit.value) continue;
+        const amount = Math.floor(remaining / unit.value);
+        parts.push(`${amount.toLocaleString('ko-KR')}${unit.label}`);
+        remaining %= unit.value;
+    }
+
+    if (remaining > 0 || parts.length === 0) {
+        parts.push(`${remaining.toLocaleString('ko-KR')}원`);
+    } else {
+        const lastIndex = parts.length - 1;
+        parts[lastIndex] = `${parts[lastIndex]}원`;
+    }
+
+    return `${isNegative ? '-' : ''}${parts.join(' ')}`;
 }
 
 function validateConditionNode(node, path, errors) {
@@ -607,6 +667,8 @@ function initGame() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     nodes = []; nextId = 0; globalMonths = 0;
+    familyAssetKrw = INITIAL_FAMILY_ASSET_KRW;
+    lastMonthlyCashflowKrw = 0;
     yearlyEventQueue = [];
     camX = canvas.width / 2; camY = 150;
     isEventActive = false; // 이벤트 잠금 초기화
@@ -670,6 +732,8 @@ function startTimers() {
     monthTimer = setInterval(() => {
         if(isEventActive) return;
         globalMonths++;
+        settleMonthlyFamilyAsset();
+        updateUI();
 
         const isYearlyTick = globalMonths % 12 === 0;
         let successionTriggered = false;
@@ -848,7 +912,17 @@ function markAsSideBranch(nodeId) {
     if(node) { node.isMain = false; if(node.partner !== null) { const pNode = nodes.find(n => n.id === node.partner); if(pNode) pNode.isMain = false; } node.children.forEach(c => markAsSideBranch(c)); }
 }
 
-function updateUI() { document.getElementById('pop-ui').innerText = `인구: ${nodes.filter(n=>n.isAlive).length}명`; }
+function updateUI() {
+    const popElement = document.getElementById('pop-ui');
+    if (popElement) {
+        popElement.innerText = `인구: ${nodes.filter(n => n.isAlive).length}명`;
+    }
+
+    const assetElement = document.getElementById('asset-ui');
+    if (assetElement) {
+        assetElement.innerText = `자산: ${formatKoreanMoneyUnits(familyAssetKrw)}`;
+    }
+}
 function closeEvent() {
     document.getElementById('event-modal').style.display = 'none';
     isEventActive = false;
