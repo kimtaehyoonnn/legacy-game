@@ -675,6 +675,7 @@ function getRandomVisuals() {
         if (assetType === 'nose') return `N${letter}`;
         if (assetType === 'mouth') return `M${letter}`;
         if (assetType === 'hair') return `H${letter}`;
+        if (assetType === 'clothes') return `C${letter}`;
         return null;
     };
     
@@ -683,7 +684,8 @@ function getRandomVisuals() {
         nose: getRandomAsset('nose'),
         mouth: getRandomAsset('mouth'),
         face: getRandomAsset('face'),
-        hair: getRandomAsset('hair')
+        hair: getRandomAsset('hair'),
+        clothes: getRandomAsset('clothes')
     };
 }
 
@@ -950,8 +952,13 @@ function triggerMarriage(p) {
 function inheritVisuals(p1Visuals, p2Visuals) {
     const childVisuals = {};
     for (const part in p1Visuals) {
+        if (part === 'clothes') continue; // 옷은 유전 제외
         childVisuals[part] = (Math.random() < 0.5) ? p1Visuals[part] : p2Visuals[part];
     }
+    // 옷은 랜덤 독립 배정
+    const clothesCount = ASSET_CONFIG.clothes.count;
+    const clothesLetter = String.fromCharCode(65 + Math.floor(Math.random() * clothesCount));
+    childVisuals.clothes = `C${clothesLetter}`;
     return childVisuals;
 }
 

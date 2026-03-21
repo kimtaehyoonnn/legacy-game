@@ -3,7 +3,8 @@ const ASSET_CONFIG = {
     eyes: { count: 5, prefix: 'Eye' },      // EyeA~EyeE (5가지)
     nose: { count: 5, prefix: 'Nose' },     // NoseA~NoseE (5가지)
     mouth: { count: 5, prefix: 'Mouth' },   // MouthA~MouthE (5가지)
-    hair: { count: 5, prefix: 'Hair' }      // HairA~HairE (5가지)
+    hair: { count: 5, prefix: 'Hair' },     // HairA~HairE (5가지)
+    clothes: { count: 5, prefix: 'Clothes' } // ClothesA~ClothesE (5가지)
 };
 
 const FACE_CONFIG = {
@@ -17,7 +18,8 @@ const characterAssets = {
     eyes: {},
     nose: {},
     mouth: {},
-    hair: {}
+    hair: {},
+    clothes: {}
 };
 
 // 로드된 이미지 개수 추적
@@ -64,7 +66,8 @@ Object.entries(ASSET_CONFIG).forEach(([assetType, config]) => {
         const prefix = assetType === 'eyes' ? 'E' :
                       assetType === 'nose' ? 'N' :
                       assetType === 'mouth' ? 'M' :
-                      assetType === 'hair' ? 'H' : '';
+                      assetType === 'hair' ? 'H' :
+                      assetType === 'clothes' ? 'C' : '';
         
         const code = `${prefix}${letter.toUpperCase()}`; // Ea, Eb, ... or Na, Nb, ...
         const filename = `${prefix}${letter}`; // ea, eb, ... or na, nb, ...
@@ -133,8 +136,8 @@ class PersonNode {
             val: { tier: 'N', name: '현실주의' }, 
             hlt: { tier: 'N', name: '평범한 체력' } 
         };
-        this.visuals = { eyes: 'Ea', nose: 'Na', mouth: 'Ma', face: 'Fa', hair: 'Ha' };
-        
+                this.visuals = { eyes: 'Ea', nose: 'Na', mouth: 'Ma', face: 'Fa', hair: 'Ha', clothes: 'Ca' };
+
         console.log(`[PersonNode] ID:${this.id}, 이름:${name}, 초기좌표:(${this.x},${this.y}), targetX:${this.targetX}, targetY:${this.targetY}`);
     }
 
@@ -149,10 +152,10 @@ class PersonNode {
 
         if (this.isAlive && !isEventActive && currentSpeed > 0) this.pulse += 0.05 * currentSpeed;
         const s = this.isAlive ? 1 + Math.sin(this.pulse) * 0.03 : 1;
-        
-        // 💡 이미지 비율 512×710을 유지하며 렌더링 (30% 확대)
+
+        // 이미지 비율 512×710 유지 (30% 확대)
         const imgHeight = this.radius * 2.6;
-        const imgWidth = imgHeight * (512 / 710); // 약 90×126
+        const imgWidth = imgHeight * (512 / 710);
 
         ctx.save();
         try {
@@ -161,8 +164,6 @@ class PersonNode {
             
             if (!this.isAlive || !this.isMain) ctx.globalAlpha = 0.3;
 
-            // 💡 뒤의 원형 배경 제거됨
-            
             // 전경: 이미지 그리기
             ctx.globalAlpha = 1;
             
@@ -183,30 +184,32 @@ class PersonNode {
             // 입
             const mouthCode = this.visuals.mouth || 'Ma';
             const mouthImg = characterAssets.mouth[mouthCode];
-            if (mouthImg && mouthImg.complete && mouthImg.naturalWidth) {
+            if (mouthImg && mouthImg.complete && mouthImg.naturalWidth)
                 ctx.drawImage(mouthImg, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
-            }
             
             // 코
             const noseCode = this.visuals.nose || 'Na';
             const noseImg = characterAssets.nose[noseCode];
-            if (noseImg && noseImg.complete && noseImg.naturalWidth) {
+            if (noseImg && noseImg.complete && noseImg.naturalWidth)
                 ctx.drawImage(noseImg, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
-            }
             
             // 눈
             const eyesCode = this.visuals.eyes || 'Ea';
             const eyesImg = characterAssets.eyes[eyesCode];
-            if (eyesImg && eyesImg.complete && eyesImg.naturalWidth) {
+            if (eyesImg && eyesImg.complete && eyesImg.naturalWidth)
                 ctx.drawImage(eyesImg, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
-            }
             
             // 머리
             const hairCode = this.visuals.hair || 'Ha';
             const hairImg = characterAssets.hair[hairCode];
-            if (hairImg && hairImg.complete && hairImg.naturalWidth) {
+            if (hairImg && hairImg.complete && hairImg.naturalWidth)
                 ctx.drawImage(hairImg, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
-            }
+
+            // 옷
+            const clothesCode = this.visuals.clothes || 'Ca';
+            const clothesImg = characterAssets.clothes[clothesCode];
+            if (clothesImg && clothesImg.complete && clothesImg.naturalWidth)
+                ctx.drawImage(clothesImg, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
 
             // 왕관
             if (this.isHead && this.isAlive) {
@@ -258,17 +261,6 @@ class PersonNode {
         } finally {
             ctx.restore();
         }
-    }
-
-    _drawFallback(ctx) {
-        // 📌 배경: 매우 투명한 원 테두리만 (Face 이미지가 보이도록)
-        ctx.beginPath(); 
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.gender === 'M' ? "rgba(74, 105, 189, 0.1)" : "rgba(255, 121, 121, 0.1)";  // 매우 투명
-        ctx.fill(); 
-        ctx.strokeStyle = this.gender === 'M' ? "rgba(74, 105, 189, 0.3)" : "rgba(255, 121, 121, 0.3)";  // 약간 투명
-        ctx.lineWidth = 2;
-        ctx.stroke();
     }
 
     update(canvasWidth, canvasHeight) {
