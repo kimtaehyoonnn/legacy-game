@@ -1016,6 +1016,22 @@ function updateUI() {
         assetElement.innerText = `자산: ${formatKoreanMoneyUnits(familyAssetKrw)}`;
     }
 }
+// 관리자: 자동선택
+let autoChoiceEnabled = false;
+function toggleAutoChoice() {
+    autoChoiceEnabled = !autoChoiceEnabled;
+    const btn = document.getElementById('auto-choice-btn');
+    btn.textContent = `🤖 자동선택: ${autoChoiceEnabled ? 'ON' : 'OFF'}`;
+    btn.style.background = autoChoiceEnabled ? '#00b894' : '#636e72';
+    if (autoChoiceEnabled && isEventActive) autoClickChoice();
+}
+function autoClickChoice() {
+    const btns = document.querySelectorAll('#choices-container .choice-btn');
+    if (!btns.length) return;
+    // 랜덤 선택 (첫 번째는 항상 같아서 랜덤으로)
+    btns[Math.floor(Math.random() * btns.length)].click();
+}
+
 function closeEvent() {
     document.getElementById('event-modal').style.display = 'none';
     isEventActive = false;
@@ -1039,11 +1055,26 @@ canvas.addEventListener('touchmove', e => { e.preventDefault(); if (e.touches.le
 canvas.addEventListener('touchend', e => { if (e.touches.length < 2) initialPinchDistance = null; if (e.touches.length === 0) isDragging = false; });
 canvas.addEventListener('wheel', e => { e.preventDefault(); scale = Math.max(0.2, Math.min(2, scale + e.deltaY * -0.001)); }, { passive: false });
 
+// 자동선택: 이벤트 모달이 열릴 때 감지
+(function() {
+    const modal = document.getElementById('event-modal');
+    if (!modal) return;
+    new MutationObserver(() => {
+        if (modal.style.display === 'block' && autoChoiceEnabled) {
+            setTimeout(autoClickChoice, 80); // 버튼이 렌더링된 후 클릭
+        }
+    }).observe(modal, { attributes: true, attributeFilter: ['style'] });
+})();
+
 function animate() {
     updateCamera();
+    // 전역 pulse를 여기서 한 번만 증가 (캐릭터 수와 무관하게 일정 속도)
+    if (!isEventActive && currentSpeed > 0) globalPulse += 0.02 * currentSpeed;
     ctx.clearRect(0,0,canvas.width, canvas.height);
     ctx.save();
-    ctx.translate(camX, camY);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.translate(Math.round(camX), Math.round(camY));
     ctx.scale(scale, scale);
     
     ctx.lineWidth = 3;

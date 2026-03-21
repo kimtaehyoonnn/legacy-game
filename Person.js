@@ -22,6 +22,9 @@ const characterAssets = {
     clothes: {}
 };
 
+// 전역 pulse (모든 캐릭터 동기화)
+let globalPulse = 0;
+
 // 로드된 이미지 개수 추적
 let imagesLoaded = 0;
 let totalImages = FACE_CONFIG.count + 
@@ -111,7 +114,7 @@ class PersonNode {
         this.partner = null;
         this.isMarried = false; 
         this.radius = 48; 
-        this.pulse = Math.random() * 10;
+        // pulse는 전역 globalPulse 사용 (동기화)
         this.children = [];
         this.isHead = isHead; 
         this.isMain = isMain; 
@@ -150,16 +153,15 @@ class PersonNode {
         this.x += (this.targetX - this.x) * 0.15;
         this.y += (this.targetY - this.y) * 0.15;
 
-        if (this.isAlive && !isEventActive && currentSpeed > 0) this.pulse += 0.05 * currentSpeed;
-        const s = this.isAlive ? 1 + Math.sin(this.pulse) * 0.03 : 1;
+        const s = this.isAlive ? 1 + Math.sin(globalPulse) * 0.03 : 1;
 
-        // 이미지 비율 512×710 유지 (30% 확대)
-        const imgHeight = this.radius * 2.6;
-        const imgWidth = imgHeight * (512 / 710);
+        const imgHeight = Math.round(this.radius * 2.6);
+        const imgWidth = Math.round(imgHeight * (512 / 710));
 
         ctx.save();
         try {
-            ctx.translate(this.x, this.y);
+            // 소수점 좌표를 정수로 스냅: translate 자체가 소수점이면 모든 drawImage가 틀어짐
+            ctx.translate(Math.round(this.x), Math.round(this.y));
             ctx.scale(s, s);
             
             if (!this.isAlive || !this.isMain) ctx.globalAlpha = 0.3;
@@ -170,8 +172,10 @@ class PersonNode {
             // 얼굴
             const faceType = this.visuals.face || 'Fa';
             const faceImg = characterAssets.face[faceType];
+            const dx = Math.round(-imgWidth / 2);
+            const dy = Math.round(-imgHeight / 2);
             if (faceImg && faceImg.complete && faceImg.naturalWidth) {
-                ctx.drawImage(faceImg, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+                ctx.drawImage(faceImg, dx, dy, imgWidth, imgHeight);
                 if (this.id === 0 && !window.faceRenderedOnce) {
                     console.log(`✅ [Face 렌더링] ${faceType} 성공`);
                     window.faceRenderedOnce = true;
@@ -185,31 +189,31 @@ class PersonNode {
             const mouthCode = this.visuals.mouth || 'Ma';
             const mouthImg = characterAssets.mouth[mouthCode];
             if (mouthImg && mouthImg.complete && mouthImg.naturalWidth)
-                ctx.drawImage(mouthImg, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+                ctx.drawImage(mouthImg, dx, dy, imgWidth, imgHeight);
             
             // 코
             const noseCode = this.visuals.nose || 'Na';
             const noseImg = characterAssets.nose[noseCode];
             if (noseImg && noseImg.complete && noseImg.naturalWidth)
-                ctx.drawImage(noseImg, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+                ctx.drawImage(noseImg, dx, dy, imgWidth, imgHeight);
             
             // 눈
             const eyesCode = this.visuals.eyes || 'Ea';
             const eyesImg = characterAssets.eyes[eyesCode];
             if (eyesImg && eyesImg.complete && eyesImg.naturalWidth)
-                ctx.drawImage(eyesImg, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+                ctx.drawImage(eyesImg, dx, dy, imgWidth, imgHeight);
             
             // 머리
             const hairCode = this.visuals.hair || 'Ha';
             const hairImg = characterAssets.hair[hairCode];
             if (hairImg && hairImg.complete && hairImg.naturalWidth)
-                ctx.drawImage(hairImg, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+                ctx.drawImage(hairImg, dx, dy, imgWidth, imgHeight);
 
             // 옷
             const clothesCode = this.visuals.clothes || 'Ca';
             const clothesImg = characterAssets.clothes[clothesCode];
             if (clothesImg && clothesImg.complete && clothesImg.naturalWidth)
-                ctx.drawImage(clothesImg, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+                ctx.drawImage(clothesImg, dx, dy, imgWidth, imgHeight);
 
             // 왕관
             if (this.isHead && this.isAlive) {
@@ -217,8 +221,8 @@ class PersonNode {
                 ctx.fillText("👑", 0, -this.radius - 10);
             }
 
-            // 텍스트: 이름 및 나이
-            let startY = this.radius + 20;
+            // 텍스트: 이름 및 나이 (이미지 하단 기준으로 간격 확보)
+            let startY = Math.round(imgHeight / 2) + 18;
             ctx.fillStyle = "#2d3436";
             ctx.font = "bold 15px sans-serif";
             ctx.textAlign = "center";
@@ -243,18 +247,27 @@ class PersonNode {
                 const text = `[${t.prefix}] ${t.name}`;
                 const textWidth = ctx.measureText(text).width;
                 const boxWidth = textWidth + 16;
-                const boxY = startY + (i * 24);
-                
+
+                // 2×2 배치: 짝수=왼쪽, 홀수=오른쪽
+                const col = i % 2;       // 0: 왼쪽, 1: 오른쪽
+                const row = Math.floor(i / 2);
+                const boxH = 20;
+                const rowGap = 26;
+                const colGap = 4;        // 좌우 박스 사이 간격
+                const boxY = startY + row * rowGap;
+                // 왼쪽 열: 오른쪽 정렬, 오른쪽 열: 왼쪽 정렬 (중앙 기준)
+                const boxX = col === 0 ? -(colGap / 2) - boxWidth : (colGap / 2);
+
                 ctx.fillStyle = getTierColor(t.tier);
                 if (ctx.roundRect) {
                     ctx.beginPath();
-                    ctx.roundRect(-boxWidth / 2, boxY, boxWidth, 20, 6);
+                    ctx.roundRect(boxX, boxY, boxWidth, boxH, 6);
                     ctx.fill();
                 } else {
-                    ctx.fillRect(-boxWidth / 2, boxY, boxWidth, 20);
+                    ctx.fillRect(boxX, boxY, boxWidth, boxH);
                 }
                 ctx.fillStyle = "#ffffff";
-                ctx.fillText(text, 0, boxY + 10);
+                ctx.fillText(text, boxX + boxWidth / 2, boxY + boxH / 2);
             });
         } catch (e) {
             console.error(`[draw] ${this.name} 오류:`, e);
