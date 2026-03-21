@@ -902,6 +902,8 @@ function triggerSuccession(deceasedHead) {
                 <span style="color:${getTierColor(child.traits.hlt.tier)}"><b>[건강]</b> ${child.traits.hlt.name}</span>
             </div>`;
         btn.onclick = () => {
+            const livingChildCount = Math.max(1, livingChildren.length);
+            familyAssetKrw = Math.floor(familyAssetKrw / livingChildCount);
             deceasedHead.children.forEach(cId => { if (cId !== child.id) markAsSideBranch(cId); });
             child.isHead = true; 
             targetCamX = (canvas.width / 2) - (child.targetX * scale); targetCamY = (canvas.height / 2) - (child.targetY * scale); isSliding = true;
