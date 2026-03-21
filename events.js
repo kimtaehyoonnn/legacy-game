@@ -1,8 +1,45 @@
 // 데이터 기반 일반 이벤트 정의
 // 스키마: { code, text, probability, condition, choices[] }
 // condition: { op:'and'|'or', conditions:[...] } 또는 { target, field, operator, value }
-// choices: [{ id, text, result:{ type:'none'|'disease'|'trait_delta', ... } }]
+// choices: [{ id, text, result:{ type:'none'|'disease'|'trait_delta'|'set_job', ... } }]
 const GENERAL_EVENTS = [
+    {
+        code: 'career_initial_choice',
+        text: '첫 직업을 선택할 시기가 왔다.',
+        probability: 1,
+        condition: {
+            op: 'and',
+            conditions: [
+                { target: 'person', field: 'age', operator: 'eq', value: 20 },
+                { target: 'person', field: 'careerStage', operator: 'eq', value: 'none' }
+            ]
+        },
+        choices: [
+            { id: 'housekeeper', text: '하우스키퍼', result: { type: 'set_job', jobCode: 'housekeeper' } },
+            { id: 'student', text: '학생', result: { type: 'set_job', jobCode: 'student' } },
+            { id: 'delivery_rider', text: '배달기사', result: { type: 'set_job', jobCode: 'delivery_rider' } },
+            { id: 'musician', text: '음악가', result: { type: 'set_job', jobCode: 'musician' } }
+        ]
+    },
+    {
+        code: 'career_post_student_choice',
+        text: '학생 생활을 마치고 다음 진로를 선택할 때다.',
+        probability: 1,
+        condition: {
+            op: 'and',
+            conditions: [
+                { target: 'person', field: 'careerStage', operator: 'eq', value: 'selected' },
+                { target: 'person', field: 'jobCode', operator: 'eq', value: 'student' },
+                { target: 'person', field: 'monthsSinceJobAssigned', operator: 'gte', value: 60 }
+            ]
+        },
+        choices: [
+            { id: 'housekeeper', text: '하우스키퍼', result: { type: 'set_job', jobCode: 'housekeeper' } },
+            { id: 'highschool_teacher', text: '고등학교 선생', result: { type: 'set_job', jobCode: 'highschool_teacher' } },
+            { id: 'lawyer', text: '변호사', result: { type: 'set_job', jobCode: 'lawyer' } },
+            { id: 'corporate_employee', text: '대기업 사원', result: { type: 'set_job', jobCode: 'corporate_employee' } }
+        ]
+    },
     {
         code: 'mart_beg_item',
         text: '마트에 가서 물건을 사달라고 조른다.',

@@ -13,7 +13,7 @@ let familyAssetKrw = INITIAL_FAMILY_ASSET_KRW;
 let lastMonthlyCashflowKrw = 0;
 const EVENT_GROUP_OPS = new Set(['and', 'or']);
 const EVENT_LEAF_OPERATORS = new Set(['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in']);
-const EVENT_RESULT_TYPES = new Set(['none', 'disease', 'trait_delta']);
+const EVENT_RESULT_TYPES = new Set(['none', 'disease', 'trait_delta', 'set_job']);
 
 // 💡 특성 데이터 정의
 const TRAITS_DATA = {
@@ -71,6 +71,10 @@ const EVENT_RESULT_HANDLERS = {
 
         const nextIndex = Math.max(0, Math.min(traitPool.length - 1, currentIndex + normalizedDelta));
         person.traits[result.trait] = traitPool[nextIndex];
+    },
+    set_job: (result, person) => {
+        if (!person || typeof result.jobCode !== 'string') return;
+        setPersonJob(person, result.jobCode, globalMonths);
     }
 };
 
@@ -96,9 +100,55 @@ function getFixedMonthlyExpenseKrw(age) {
     return 1_000_000;
 }
 
-function getFixedMonthlyIncomeKrw() {
-    // 직업 시스템 미구현 단계(v1)에서는 고정소득 0원
-    return 0;
+function getFixedMonthlyIncomeKrw(person) {
+    if (!person || !Number.isFinite(person.jobMonthlyIncomeKrw)) return 0;
+    return person.jobMonthlyIncomeKrw;
+}
+
+function setPersonJob(person, jobCode, assignedMonth = globalMonths) {
+    if (!person) return;
+
+    const jobDef = JOB_DEFINITIONS[jobCode];
+    if (!jobDef) {
+        console.warn('[CAREER] 알 수 없는 직업 코드:', jobCode);
+        return;
+    }
+
+    person.jobCode = jobCode;
+    person.jobName = jobDef.name;
+    person.jobMonthlyIncomeKrw = jobDef.monthlyIncomeKrw;
+    person.jobAssignedMonth = Number.isFinite(assignedMonth) ? Math.floor(assignedMonth) : globalMonths;
+    person.careerStage = 'selected';
+}
+
+function retirePersonJob(person) {
+    if (!person) return;
+    person.jobCode = null;
+    person.jobName = null;
+    person.jobMonthlyIncomeKrw = 0;
+    person.jobAssignedMonth = null;
+    person.careerStage = 'retired';
+}
+
+function getRandomJobCodeFromAllJobs() {
+    if (!ALL_JOB_CODES.length) return null;
+    return ALL_JOB_CODES[Math.floor(Math.random() * ALL_JOB_CODES.length)];
+}
+
+function assignRandomCareerForLateJoiner(person) {
+    if (!person || !person.isAlive || !person.isMain) return;
+
+    if (person.age >= 65) {
+        retirePersonJob(person);
+        return;
+    }
+
+    if (person.age < 20 || person.careerStage !== 'none') return;
+
+    const randomJobCode = getRandomJobCodeFromAllJobs();
+    if (!randomJobCode) return;
+
+    setPersonJob(person, randomJobCode, globalMonths);
 }
 
 function isAliveAndValidInGameFamilyMember(person) {
@@ -207,6 +257,14 @@ function validateChoiceResult(result, path, errors) {
             errors.push(`${path}.delta: 숫자여야 합니다.`);
         } else if (result.delta < -2 || result.delta > 2) {
             errors.push(`${path}.delta: -2 ~ 2 범위여야 합니다.`);
+        }
+    }
+
+    if (result.type === 'set_job') {
+        if (typeof result.jobCode !== 'string' || !result.jobCode.trim()) {
+            errors.push(`${path}.jobCode: 문자열 직업 코드가 필요합니다.`);
+        } else if (!Object.prototype.hasOwnProperty.call(JOB_DEFINITIONS, result.jobCode)) {
+            errors.push(`${path}.jobCode: '${result.jobCode}'는 지원되지 않는 직업 코드입니다.`);
         }
     }
 }
@@ -354,6 +412,17 @@ function getConditionValue(target, field) {
     }, target);
 }
 
+function buildPersonConditionContext(person) {
+    const monthsSinceJobAssigned = Number.isFinite(person?.jobAssignedMonth)
+        ? globalMonths - person.jobAssignedMonth
+        : null;
+
+    return {
+        ...person,
+        monthsSinceJobAssigned
+    };
+}
+
 function compareConditionValue(left, operator, right) {
     switch (operator) {
         case 'eq': return left === right;
@@ -385,11 +454,12 @@ function evaluateCondition(node, person, gameCtx) {
 function collectEligibleEvents(person, gameCtx) {
     if (!person || !person.isAlive || !person.isMain) return [];
     ensureEventState(person);
+    const personCtx = buildPersonConditionContext(person);
 
     const eligible = [];
     for (const eventDef of GENERAL_EVENT_DEFINITIONS) {
         if (!eventDef || !eventDef.code || person.eventState.firedCodes.has(eventDef.code)) continue;
-        if (!evaluateCondition(eventDef.condition, person, gameCtx)) continue;
+        if (!evaluateCondition(eventDef.condition, personCtx, gameCtx)) continue;
 
         const probability = typeof eventDef.probability === 'number' ? eventDef.probability : 0;
         const normalizedProbability = Math.max(0, Math.min(1, probability));
@@ -447,6 +517,7 @@ function openNextQueuedEvent() {
         const person = nodes.find(n => n.id === queued.personId);
         if (!person || !person.isAlive || !person.isMain) continue;
 
+        if (!queued.eventDef) continue;
         ensureEventState(person);
         if (person.eventState.firedCodes.has(queued.eventDef.code)) continue;
 
@@ -463,9 +534,7 @@ function openNextQueuedEvent() {
             btn.textContent = choice.text;
             btn.onclick = () => {
                 applyEventChoice(person, queued.eventDef, choice.id, buildGameContext());
-                document.getElementById('event-modal').style.display = 'none';
-                isEventActive = false;
-                openNextQueuedEvent();
+                closeEvent();
             };
             container.appendChild(btn);
         });
@@ -543,6 +612,12 @@ function runEventEngineSelfTests() {
     }, 0, new Set());
 
     const resultTestPerson = {
+        age: 20,
+        careerStage: 'none',
+        jobCode: null,
+        jobName: null,
+        jobMonthlyIncomeKrw: 0,
+        jobAssignedMonth: null,
         traits: {
             app: TRAITS_DATA.app[0],
             per: TRAITS_DATA.per[2],
@@ -553,7 +628,11 @@ function runEventEngineSelfTests() {
     };
     applyEventResult({ type: 'disease', disease: '감기' }, resultTestPerson, gameCtx);
     applyEventResult({ type: 'trait_delta', trait: 'per', delta: 1 }, resultTestPerson, gameCtx);
-    const resultHandlersPassed = resultTestPerson.disease === '감기' && !!resultTestPerson.traits.per;
+    applyEventResult({ type: 'set_job', jobCode: 'housekeeper' }, resultTestPerson, gameCtx);
+    const resultHandlersPassed = resultTestPerson.disease === '감기'
+        && !!resultTestPerson.traits.per
+        && resultTestPerson.jobCode === 'housekeeper'
+        && resultTestPerson.careerStage === 'selected';
 
     const allPassed = failedConditions.length === 0 && invalidEventErrors.length > 0 && resultHandlersPassed;
     if (allPassed) {
@@ -771,6 +850,10 @@ function startTimers() {
                 return;
             }
 
+            for (let n of nodes) {
+                if (!n.isAlive || !n.isMain) continue;
+                if (n.age >= 65) retirePersonJob(n);
+            }
             enqueueYearlyEvents();
             if (openNextQueuedEvent()) {
                 const yearText = `${Math.floor(globalMonths/12)}년째 가문 진행 중`;
@@ -853,6 +936,7 @@ function triggerMarriage(p) {
             partner.isMarried = true; p.isMarried = true; p.partner = partner.id; partner.partner = p.id;
             partner.traits = { app: c_app, per: c_per, val: c_val, hlt: c_hlt };
             partner.visuals = c_visuals;
+            assignRandomCareerForLateJoiner(partner);
             nodes.push(partner); 
             updateLayout(); updateUI(); closeEvent();
         };
@@ -1034,7 +1118,7 @@ setInterval(() => {
         console.log("  - 재위치 (targetX,targetY):", founder.targetX.toFixed(1), ",", founder.targetY.toFixed(1));
         console.log("  - isMarried:", founder.isMarried, ", partner:", founder.partner);
         console.log("[DIAGNOSIS] 이벤트 잠금:", isEventActive);
-        console.log("[DIAGNOSIS] 일반 이벤트 큐:", yearlyEventQueue.length);
+        console.log("[DIAGNOSIS] 이벤트 큐:", yearlyEventQueue.length);
         console.log("[DIAGNOSIS] 경과 월:", globalMonths, "(" + Math.floor(globalMonths/12) + "년)");
         console.log("[DIAGNOSIS] 게임 속도:", currentSpeed);
         console.log("[DIAGNOSIS] draw() 호출 횟수:", drawCallCount, "(매 프레임)");

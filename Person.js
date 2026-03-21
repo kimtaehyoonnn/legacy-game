@@ -120,6 +120,11 @@ class PersonNode {
             firedCodes: new Set(),
             choiceByCode: {}
         };
+        this.jobCode = null;
+        this.jobName = null;
+        this.jobMonthlyIncomeKrw = 0;
+        this.jobAssignedMonth = null;
+        this.careerStage = 'none';
         
         // 💡 null 에러 방지를 위해 기본값 설정
         this.traits = { 
@@ -215,7 +220,8 @@ class PersonNode {
             ctx.font = "bold 15px sans-serif";
             ctx.textAlign = "center";
             let diseaseIcon = this.disease ? " 🤒" : "";
-            ctx.fillText(`${this.name}(${this.age})${diseaseIcon}`, 0, startY);
+            const jobLabel = this.jobName || (this.careerStage === 'retired' ? '은퇴' : '무직');
+            ctx.fillText(`${this.name}(${this.age}) · ${jobLabel}${diseaseIcon}`, 0, startY);
             
             // 텍스트: 특성
             startY += 12;
