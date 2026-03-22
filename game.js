@@ -656,36 +656,26 @@ function getRandomTrait(category) {
     return traits[Math.floor(Math.random() * traits.length)];
 }
 
-function getRandomVisuals() {
-    // 💡 ASSET_CONFIG 기반 동적 선택 (Person.js에서 정의됨)
+function getRandomVisuals(gender = 'M') {
     const getRandomAsset = (assetType) => {
         if (assetType === 'face') {
             return FACE_CONFIG.types[Math.floor(Math.random() * FACE_CONFIG.count)];
         }
-        const config = ASSET_CONFIG[assetType];
-        if (!config) return null;
-        
-        const letters = [];
-        for (let i = 0; i < config.count; i++) {
-            letters.push(String.fromCharCode(65 + i));
-        }
-        const letter = letters[Math.floor(Math.random() * letters.length)];
-        
-        if (assetType === 'eyes') return `E${letter}`;
-        if (assetType === 'nose') return `N${letter}`;
-        if (assetType === 'mouth') return `M${letter}`;
-        if (assetType === 'hair') return `H${letter}`;
-        if (assetType === 'clothes') return `C${letter}`;
-        return null;
+        const codes = loadedAssetCodes[assetType];
+        if (!codes || codes.length === 0) return null;
+        return codes[Math.floor(Math.random() * codes.length)];
     };
-    
+
+    const fhPool = gender === 'M' ? loadedAssetCodes.mFrontHair : loadedAssetCodes.fFrontHair;
+    const frontHair = fhPool.length ? fhPool[Math.floor(Math.random() * fhPool.length)] : null;
     return {
-        eyes: getRandomAsset('eyes'),
-        nose: getRandomAsset('nose'),
-        mouth: getRandomAsset('mouth'),
-        face: getRandomAsset('face'),
-        hair: getRandomAsset('hair'),
-        clothes: getRandomAsset('clothes')
+        eyes:     getRandomAsset('eyes'),
+        nose:     getRandomAsset('nose'),
+        mouth:    getRandomAsset('mouth'),
+        face:     getRandomAsset('face'),
+        frontHair,
+        clothes:  getRandomAsset('clothes'),
+        shoulder: getRandomAsset('shoulder')
     };
 }
 
@@ -762,7 +752,7 @@ function initGame() {
     const founderY = 0;
     const founder = new PersonNode("1대 가주", 'M', founderX, founderY, 0, 19, [], true, true, false); 
     founder.traits = { app: getRandomTrait('app'), per: getRandomTrait('per'), val: getRandomTrait('val'), hlt: getRandomTrait('hlt') };
-    founder.visuals = getRandomVisuals();
+    founder.visuals = getRandomVisuals('M');
     nodes.push(founder);
     
     // 레이아웃 업데이트로 targetX, targetY 설정
@@ -922,9 +912,10 @@ function triggerMarriage(p) {
     container.innerHTML = '';
     document.getElementById('e-title').innerText = "💍 혼담 발생";
     document.getElementById('e-desc').innerText = `${p.name}의 배우자를 신중히 선택하세요.`;
+    const partnerGender = p.gender === 'M' ? 'F' : 'M';
     for(let i=0; i<3; i++) {
         const c_app = getRandomTrait('app'), c_per = getRandomTrait('per'), c_val = getRandomTrait('val'), c_hlt = getRandomTrait('hlt');
-        const c_visuals = getRandomVisuals();
+        const c_visuals = getRandomVisuals(partnerGender);
         const btn = document.createElement('button');
         btn.className = 'choice-btn';
         btn.innerHTML = `
@@ -949,16 +940,20 @@ function triggerMarriage(p) {
     document.getElementById('event-modal').style.display = 'block';
 }
 
-function inheritVisuals(p1Visuals, p2Visuals) {
+function inheritVisuals(p1Visuals, p2Visuals, gender = 'M') {
     const childVisuals = {};
     for (const part in p1Visuals) {
-        if (part === 'clothes') continue; // 옷은 유전 제외
+        if (part === 'clothes' || part === 'frontHair') continue; // 옷/머리는 성별 기반 독립 배정
         childVisuals[part] = (Math.random() < 0.5) ? p1Visuals[part] : p2Visuals[part];
     }
-    // 옷은 랜덤 독립 배정
-    const clothesCount = ASSET_CONFIG.clothes.count;
-    const clothesLetter = String.fromCharCode(65 + Math.floor(Math.random() * clothesCount));
-    childVisuals.clothes = `C${clothesLetter}`;
+    // 앞머리: 자녀 성별 풀에서 랜덤
+    const fhPool = gender === 'M' ? loadedAssetCodes.mFrontHair : loadedAssetCodes.fFrontHair;
+    childVisuals.frontHair = fhPool.length ? fhPool[Math.floor(Math.random() * fhPool.length)] : null;
+    // 옷과 어깨는 loadedAssetCodes 기반 랜덤 독립 배정
+    const clothesCodes = loadedAssetCodes.clothes;
+    childVisuals.clothes = clothesCodes.length ? clothesCodes[Math.floor(Math.random() * clothesCodes.length)] : 'CA';
+    const shoulderCodes = loadedAssetCodes.shoulder;
+    childVisuals.shoulder = shoulderCodes.length ? shoulderCodes[Math.floor(Math.random() * shoulderCodes.length)] : 'SA';
     return childVisuals;
 }
 
@@ -975,7 +970,7 @@ function triggerBirth(p) {
     };
 
     const c_app = inherit('app'), c_per = inherit('per'), c_val = inherit('val'), c_hlt = inherit('hlt');
-    const c_visuals = inheritVisuals(p.visuals, partner.visuals);
+    const c_visuals = inheritVisuals(p.visuals, partner.visuals, gender);
 
     document.getElementById('e-title').innerText = "👶 생명 탄생";
     document.getElementById('e-desc').innerHTML = `가문에 <b>${childName}</b>이(가) 태어났습니다!`;
@@ -1132,18 +1127,25 @@ function animate() {
 
 window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; initGame(); });
 runEventEngineSelfTests();
-initGame();
 
-// 📌 이미지 로드 완료 후 animate() 시작
-function startAnimate() {
-    if (imagesLoaded < totalImages) {
-        requestAnimationFrame(startAnimate);
-        return;
-    }
-    console.log(`[게임 시작] 모든 이미지 로드 완료! (${imagesLoaded}/${totalImages})`);
+// 에셋 순차 탐색 완료 후 게임 시작 (initGame이 loadedAssetCodes 채워진 이후 실행되게 돼)
+Promise.all([
+    loadFaceAssets(),
+    probeAssetType('eyes',      'E'),
+    probeAssetType('nose',      'N'),
+    probeAssetType('mouth',     'M'),
+    probeAssetType('frontHair', 'mFH', false, 'mFrontHair'),  // 남성 앞머리: mFHa.png~
+    probeAssetType('frontHair', 'fFH', false, 'fFrontHair'),  // 여성 앞머리: fFHa.png~
+    probeAssetType('backHair',  'mBH', true,  'mBackHair'),   // 남성 뒷머리: mBHx.png (비연속)
+    probeAssetType('backHair',  'fBH', true,  'fBackHair'),   // 여성 뒷머리: fBHx.png (비연속)
+    probeAssetType('clothes',   'C'),
+    probeAssetType('shoulder',  'S'),
+]).then(() => {
+    console.log('[게임 시작] 에셋 탐색 완료:',
+        Object.fromEntries(Object.entries(loadedAssetCodes).map(([k, v]) => [k, v.length + '개'])));
+    initGame();
     animate();
-}
-startAnimate();
+});
 
 // 실시간 진단 로깅 (3초마다)
 setInterval(() => {

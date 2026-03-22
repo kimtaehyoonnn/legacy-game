@@ -1,10 +1,12 @@
-// 💡 에셋 설정 (추후 NoseB~NoseE 등 추가 시 여기만 수정)
+// 에셋 파일명 prefix (Xa.png, Xb.png... 파일 추가 시 자동 반영)
 const ASSET_CONFIG = {
-    eyes: { count: 5, prefix: 'Eye' },      // EyeA~EyeE (5가지)
-    nose: { count: 5, prefix: 'Nose' },     // NoseA~NoseE (5가지)
-    mouth: { count: 5, prefix: 'Mouth' },   // MouthA~MouthE (5가지)
-    hair: { count: 5, prefix: 'Hair' },     // HairA~HairE (5가지)
-    clothes: { count: 5, prefix: 'Clothes' } // ClothesA~ClothesE (5가지)
+    eyes:      { prefix: 'E' },
+    nose:      { prefix: 'N' },
+    mouth:     { prefix: 'M' },
+    frontHair: { prefix: 'FH' },
+    backHair:  { prefix: 'BH', optional: true },  // BHx.png 없어도 됨
+    clothes:   { prefix: 'C' },
+    shoulder:  { prefix: 'S' }
 };
 
 const FACE_CONFIG = {
@@ -18,75 +20,67 @@ const characterAssets = {
     eyes: {},
     nose: {},
     mouth: {},
-    hair: {},
-    clothes: {}
+    frontHair: {},
+    backHair: {},
+    clothes: {},
+    shoulder: {}
+};
+
+// 실제 로드 성공한 에셋 코드 목록 (getRandomVisuals / inheritVisuals에서 사용)
+const loadedAssetCodes = {
+    eyes: [], nose: [], mouth: [],
+    mFrontHair: [], fFrontHair: [],  // 성별 전용 앞머리
+    mBackHair:  [], fBackHair:  [],  // 성별 전용 뒷머리
+    clothes: [], shoulder: []
 };
 
 // 전역 pulse (모든 캐릭터 동기화)
 let globalPulse = 0;
 
-// 로드된 이미지 개수 추적
-let imagesLoaded = 0;
-let totalImages = FACE_CONFIG.count + 
-                  Object.values(ASSET_CONFIG).reduce((sum, cfg) => sum + cfg.count, 0);
-
-console.log(`[이미지 로드] 총 ${totalImages}개 에셋 로드 예정...`);
-
-// 🔄 동적 이미지 로드 함수
-function loadImage(src, onLoad, onError) {
-    const img = new Image();
-    img.onload = () => {
-        console.log(`[이미지 로드] ${src} OK - ${img.naturalWidth}x${img.naturalHeight}`);
-        onLoad();
-    };
-    img.onerror = () => {
-        console.error(`[이미지 오류] ${src} 실패 - 파일 없거나 손상됨`);
-        onError();
-    };
-    img.src = src;
-    return img;
+// 에셋 타입별 탐색:
+// scanAll=false(기본): Xa → Xb → ... 첫 실패 시 중단 (연속적 파일셋 기대)
+// scanAll=true: a~z 전체 시도 (코드 순서 무관계)
+// codesKey: loadedAssetCodes에서 사용할 키 (기본: assetType)
+function probeAssetType(assetType, prefix, scanAll = false, codesKey = null) {
+    const targetKey = codesKey || assetType;
+    return new Promise(resolve => {
+        if (scanAll) {
+            let pending = 26;
+            for (let i = 0; i < 26; i++) {
+                const letter = String.fromCharCode(97 + i);
+                const code = `${prefix}${letter.toUpperCase()}`;
+                const img = new Image();
+                characterAssets[assetType][code] = img;
+                img.onload = () => { loadedAssetCodes[targetKey].push(code); if (--pending === 0) resolve(); };
+                img.onerror = () => { if (--pending === 0) resolve(); };
+                img.src = `images/${prefix}${letter}.png`;
+            }
+        } else {
+            function tryLetter(i) {
+                if (i >= 26) { resolve(); return; }
+                const letter = String.fromCharCode(97 + i);
+                const code = `${prefix}${letter.toUpperCase()}`;
+                const img = new Image();
+                characterAssets[assetType][code] = img;
+                img.onload = () => { loadedAssetCodes[targetKey].push(code); tryLetter(i + 1); };
+                img.onerror = () => resolve();
+                img.src = `images/${prefix}${letter}.png`;
+            }
+            tryLetter(0);
+        }
+    });
 }
 
-// 1️⃣ 얼굴 이미지 로드
-FACE_CONFIG.types.forEach(faceType => {
-    characterAssets.face[faceType] = loadImage(
-        `images/${faceType}.png`,
-        () => {
-            imagesLoaded++;
-            const img = characterAssets.face[faceType];
-            console.log(`[Face 로드] ${faceType}.png 완료 (${imagesLoaded}/${totalImages}) - 크기: ${img.naturalWidth}x${img.naturalHeight}`);
-        },
-        () => {
-            console.warn(`[Face 오류] ${faceType}.png 실패`);
-        }
-    );
-});
-
-// 2️⃣ 다른 에셋 로드
-Object.entries(ASSET_CONFIG).forEach(([assetType, config]) => {
-    for (let i = 0; i < config.count; i++) {
-        const letter = String.fromCharCode(97 + i); // 0→a, 1→b, ... (소문자!)
-        const prefix = assetType === 'eyes' ? 'E' :
-                      assetType === 'nose' ? 'N' :
-                      assetType === 'mouth' ? 'M' :
-                      assetType === 'hair' ? 'H' :
-                      assetType === 'clothes' ? 'C' : '';
-        
-        const code = `${prefix}${letter.toUpperCase()}`; // Ea, Eb, ... or Na, Nb, ...
-        const filename = `${prefix}${letter}`; // ea, eb, ... or na, nb, ...
-        
-        characterAssets[assetType][code] = loadImage(
-            `images/${filename}.png`,
-            () => {
-                imagesLoaded++;
-                console.log(`[이미지 로드] ${filename}.png 완료 (${imagesLoaded}/${totalImages})`);
-            },
-            () => {
-                console.warn(`[이미지 오류] ${filename}.png 실패`);
-            }
-        );
-    }
-});
+// 얼굴 이미지 로드
+function loadFaceAssets() {
+    return Promise.all(FACE_CONFIG.types.map(faceType => new Promise(resolve => {
+        const img = new Image();
+        characterAssets.face[faceType] = img;
+        img.onload = () => resolve();
+        img.onerror = () => { console.warn(`[Face] ${faceType}.png 없음`); resolve(); };
+        img.src = `images/${faceType}.png`;
+    })));
+}
 
 const NAMES = { M: ["강민", "준호", "도윤", "시우", "태양", "지훈", "현우", "건우", "민재", "지한"], F: ["서연", "민서", "지아", "하윤", "아린", "수아", "유나", "지윤", "예원", "다인"] };
 
@@ -139,7 +133,7 @@ class PersonNode {
             val: { tier: 'N', name: '현실주의' }, 
             hlt: { tier: 'N', name: '평범한 체력' } 
         };
-                this.visuals = { eyes: 'Ea', nose: 'Na', mouth: 'Ma', face: 'Fa', hair: 'Ha', clothes: 'Ca' };
+                this.visuals = { eyes: 'EA', nose: 'NA', mouth: 'MA', face: 'Fa', frontHair: null, clothes: 'CA', shoulder: 'SA' };
 
         console.log(`[PersonNode] ID:${this.id}, 이름:${name}, 초기좌표:(${this.x},${this.y}), targetX:${this.targetX}, targetY:${this.targetY}`);
     }
@@ -169,11 +163,31 @@ class PersonNode {
             // 전경: 이미지 그리기
             ctx.globalAlpha = 1;
             
-            // 얼굴
-            const faceType = this.visuals.face || 'Fa';
-            const faceImg = characterAssets.face[faceType];
             const dx = Math.round(-imgWidth / 2);
             const dy = Math.round(-imgHeight / 2);
+
+            // 1. 뒷머리 (FH 코드에서 성별 자동 매칭: mFHa→mBHa, fFHa→fBHa)
+            const fhCodeForBH = this.visuals.frontHair;
+            if (fhCodeForBH) {
+                const bhCode = (fhCodeForBH.startsWith('mFH') ? 'mBH' : 'fBH') + fhCodeForBH.slice(3);
+                const bhImg = characterAssets.backHair[bhCode];
+                if (bhImg && bhImg.complete && bhImg.naturalWidth)
+                    ctx.drawImage(bhImg, dx, dy, imgWidth, imgHeight);
+            }
+
+            // 2. 어깨
+            const shoulderImg = characterAssets.shoulder[this.visuals.shoulder || 'SA'];
+            if (shoulderImg && shoulderImg.complete && shoulderImg.naturalWidth)
+                ctx.drawImage(shoulderImg, dx, dy, imgWidth, imgHeight);
+
+            // 3. 옷 (어깨 위)
+            const clothesImg2 = characterAssets.clothes[this.visuals.clothes || 'CA'];
+            if (clothesImg2 && clothesImg2.complete && clothesImg2.naturalWidth)
+                ctx.drawImage(clothesImg2, dx, dy, imgWidth, imgHeight);
+
+            // 4. 얼굴
+            const faceType = this.visuals.face || 'Fa';
+            const faceImg = characterAssets.face[faceType];
             if (faceImg && faceImg.complete && faceImg.naturalWidth) {
                 ctx.drawImage(faceImg, dx, dy, imgWidth, imgHeight);
                 if (this.id === 0 && !window.faceRenderedOnce) {
@@ -203,17 +217,13 @@ class PersonNode {
             if (eyesImg && eyesImg.complete && eyesImg.naturalWidth)
                 ctx.drawImage(eyesImg, dx, dy, imgWidth, imgHeight);
             
-            // 머리
-            const hairCode = this.visuals.hair || 'Ha';
-            const hairImg = characterAssets.hair[hairCode];
-            if (hairImg && hairImg.complete && hairImg.naturalWidth)
-                ctx.drawImage(hairImg, dx, dy, imgWidth, imgHeight);
-
-            // 옷
-            const clothesCode = this.visuals.clothes || 'Ca';
-            const clothesImg = characterAssets.clothes[clothesCode];
-            if (clothesImg && clothesImg.complete && clothesImg.naturalWidth)
-                ctx.drawImage(clothesImg, dx, dy, imgWidth, imgHeight);
+            // 앞머리 (얼굴 위)
+            const fhCode = this.visuals.frontHair;
+            if (fhCode) {
+                const fhImg = characterAssets.frontHair[fhCode];
+                if (fhImg && fhImg.complete && fhImg.naturalWidth)
+                    ctx.drawImage(fhImg, dx, dy, imgWidth, imgHeight);
+            }
 
             // 왕관
             if (this.isHead && this.isAlive) {
