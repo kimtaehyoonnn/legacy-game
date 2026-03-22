@@ -273,6 +273,7 @@ function initGame() {
     const founder = new PersonNode("1대 가주", 'M', founderX, founderY, 0, 19, [], true, true, false); 
     founder.traits = { app: getRandomTrait('app'), per: getRandomTrait('per'), val: getRandomTrait('val'), hlt: getRandomTrait('hlt') };
     founder.visuals = getRandomVisuals('M');
+    applyVisualTraitRules(founder.visuals, founder.traits);
     nodes.push(founder);
     nodeMap.set(founder.id, founder);
     
@@ -284,6 +285,109 @@ function initGame() {
     const speedBtn = document.querySelectorAll('.speed-btn')[1];
     if (speedBtn) setSpeed(1, speedBtn);
     else console.error("[ERROR] Speed button not found!");
+}
+
+// 🔧 관리자 패널
+let adminPanelOpen = false;
+const adminState = { gender: 'F', face: null, eyes: null, nose: null, mouth: null, frontHair: null, clothes: null, shoulder: null };
+
+function toggleAdminPanel() {
+    adminPanelOpen = !adminPanelOpen;
+    const panel = document.getElementById('admin-panel');
+    panel.style.display = adminPanelOpen ? 'block' : 'none';
+    if (adminPanelOpen) populateAdminOptions();
+}
+
+function populateAdminOptions() {
+    const faceRow = document.getElementById('admin-face');
+    const eyesRow = document.getElementById('admin-eyes');
+    const noseRow = document.getElementById('admin-nose');
+    const mouthRow = document.getElementById('admin-mouth');
+    const fhRow = document.getElementById('admin-frontHair');
+    const clothesRow = document.getElementById('admin-clothes');
+    const shoulderRow = document.getElementById('admin-shoulder');
+
+    function fillRow(container, codes, key) {
+        container.innerHTML = '';
+        codes.forEach(code => {
+            const btn = document.createElement('button');
+            btn.className = 'admin-opt' + (adminState[key] === code ? ' active' : '');
+            btn.dataset.key = key;
+            btn.dataset.val = code;
+            btn.textContent = code;
+            btn.onclick = function() { adminSelect(this); };
+            container.appendChild(btn);
+        });
+    }
+
+    fillRow(faceRow, FACE_CONFIG.types, 'face');
+    fillRow(eyesRow, loadedAssetCodes.eyes, 'eyes');
+    fillRow(noseRow, loadedAssetCodes.nose, 'nose');
+    fillRow(mouthRow, loadedAssetCodes.mouth, 'mouth');
+    // 앞머리: 성별에 따라 풀 변경
+    const fhPool = adminState.gender === 'M' ? loadedAssetCodes.mFrontHair : loadedAssetCodes.fFrontHair;
+    fillRow(fhRow, fhPool, 'frontHair');
+    fillRow(clothesRow, loadedAssetCodes.clothes, 'clothes');
+    fillRow(shoulderRow, loadedAssetCodes.shoulder, 'shoulder');
+}
+
+function adminSelect(btn) {
+    const key = btn.dataset.key;
+    const val = btn.dataset.val;
+
+    if (key === 'gender') {
+        adminState.gender = val;
+        adminState.frontHair = null; // 성별 바뀌면 앞머리 초기화
+        btn.parentElement.querySelectorAll('.admin-opt').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        populateAdminOptions();
+        return;
+    }
+
+    // 같은 값 다시 누르면 해제 (랜덤으로 돌아감)
+    if (adminState[key] === val) {
+        adminState[key] = null;
+        btn.classList.remove('active');
+    } else {
+        adminState[key] = val;
+        btn.parentElement.querySelectorAll('.admin-opt').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+}
+
+function adminSpawn() {
+    nodes.length = 0; nodeMap.clear(); nextId = 1; globalMonths = 0;
+    if (monthTimer) { clearInterval(monthTimer); monthTimer = null; }
+
+    const gender = adminState.gender;
+    const founder = new PersonNode("디버그 가주", gender, 0, 0, 0, 19, [], true, true, false);
+    founder.traits = { app: getRandomTrait('app'), per: getRandomTrait('per'), val: getRandomTrait('val'), hlt: getRandomTrait('hlt') };
+
+    // 랜덤 비주얼 생성 후 선택된 항목만 덮어쓰기
+    const baseVisuals = getRandomVisuals(gender);
+    for (const key of ['face', 'eyes', 'nose', 'mouth', 'frontHair', 'clothes', 'shoulder']) {
+        if (adminState[key]) baseVisuals[key] = adminState[key];
+    }
+    founder.visuals = baseVisuals;
+    applyVisualTraitRules(founder.visuals, founder.traits);
+
+    nodes.push(founder); nodeMap.set(founder.id, founder);
+    updateLayout(); updateUI();
+    startTimers();
+
+    // 카메라 포커스
+    targetCamX = canvas.width / 2;
+    targetCamY = canvas.height / 2;
+
+    // 결과 표시
+    const resultDiv = document.getElementById('admin-result');
+    resultDiv.style.display = 'block';
+    const traitLines = ['app', 'per', 'val', 'hlt'].map(cat => {
+        const t = founder.traits[cat];
+        const color = getTierColor(t.tier);
+        return `<span style="color:${color}">[${t.tier}] ${t.name}</span>`;
+    }).join('<br>');
+    resultDiv.innerHTML = `<b>✅ 소환 완료</b><br>${traitLines}`;
 }
 
 function handleDisease(n) {
@@ -447,6 +551,7 @@ function triggerMarriage(p) {
             partner.isMarried = true; p.isMarried = true; p.partner = partner.id; partner.partner = p.id;
             partner.traits = { app: c_app, per: c_per, val: c_val, hlt: c_hlt };
             partner.visuals = c_visuals;
+            applyVisualTraitRules(partner.visuals, partner.traits);
             assignRandomCareerForLateJoiner(partner);
             nodes.push(partner);
             nodeMap.set(partner.id, partner);
@@ -506,6 +611,7 @@ function triggerBirth(p) {
         const child = new PersonNode(childName, gender, midX, p.y + 50, p.level + 1, 0, [p.id, p.partner], false, p.isMain, false);
         child.traits = { app: c_app, per: c_per, val: c_val, hlt: c_hlt };
         child.visuals = c_visuals;
+        applyVisualTraitRules(child.visuals, child.traits);
         p.children.push(child.id); nodes.push(child); nodeMap.set(child.id, child); updateLayout();
         targetCamX = (canvas.width / 2) - (child.targetX * scale); targetCamY = (canvas.height / 2) - (child.targetY * scale); isSliding = true;
         updateUI(); closeEvent();
