@@ -1,14 +1,3 @@
-// 에셋 파일명 prefix (Xa.png, Xb.png... 파일 추가 시 자동 반영)
-const ASSET_CONFIG = {
-    eyes:      { prefix: 'E' },
-    nose:      { prefix: 'N' },
-    mouth:     { prefix: 'M' },
-    frontHair: { prefix: 'FH' },
-    backHair:  { prefix: 'BH', optional: true },  // BHx.png 없어도 됨
-    clothes:   { prefix: 'C' },
-    shoulder:  { prefix: 'S' }
-};
-
 const FACE_CONFIG = {
     count: 5,
     types: ['Fa', 'Fb', 'Fc', 'Fd', 'Fe']   // FaceA~FaceE (5가지)
@@ -138,8 +127,6 @@ class PersonNode {
             hlt: { tier: 'N', name: '평범한 체력' } 
         };
                 this.visuals = { eyes: 'EA', nose: 'NA', mouth: 'MA', face: 'Fa', frontHair: null, clothes: 'CA', shoulder: 'SA' };
-
-        console.log(`[PersonNode] ID:${this.id}, 이름:${name}, 초기좌표:(${this.x},${this.y}), targetX:${this.targetX}, targetY:${this.targetY}`);
     }
 
     draw(ctx, scale = 1) {
@@ -165,7 +152,7 @@ class PersonNode {
             if (!this.isAlive) {
                 ctx.filter = 'grayscale(1)';
             }
-            
+
             const dx = Math.round(-imgWidth / 2);
             const dy = Math.round(-imgHeight / 2);
 
@@ -193,13 +180,6 @@ class PersonNode {
             const faceImg = characterAssets.face[faceType];
             if (faceImg && faceImg.complete && faceImg.naturalWidth) {
                 ctx.drawImage(faceImg, dx, dy, imgWidth, imgHeight);
-                if (this.id === 0 && !window.faceRenderedOnce) {
-                    console.log(`✅ [Face 렌더링] ${faceType} 성공`);
-                    window.faceRenderedOnce = true;
-                }
-            } else if (this.id === 0 && !window.faceFailedOnce) {
-                console.warn(`❌ [Face 렌더링] ${faceType} 실패 - complete: ${faceImg?.complete}, width: ${faceImg?.naturalWidth}`);
-                window.faceFailedOnce = true;
             }
             
             // 입
@@ -319,13 +299,5 @@ class PersonNode {
         } finally {
             ctx.restore();
         }
-    }
-
-    update(canvasWidth, canvasHeight) {
-        // 화면 밖으로 나가지 않게 타겟 위치 조정 (기존 로직이 있다면 거기 맞춰주세요)
-        if (this.targetX < 0) this.targetX = 0;
-        if (this.targetX > canvasWidth) this.targetX = canvasWidth;
-        if (this.targetY < 0) this.targetY = 0;
-        if (this.targetY > canvasHeight) this.targetY = canvasHeight;
     }
 }

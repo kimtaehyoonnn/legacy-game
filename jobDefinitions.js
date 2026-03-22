@@ -8,6 +8,4 @@ const JOB_DEFINITIONS = {
     corporate_employee: { name: '대기업 사원', monthlyIncomeKrw: 5_000_000 }
 };
 
-const INITIAL_JOB_OPTIONS = ['housekeeper', 'student', 'delivery_rider', 'musician'];
-const SECOND_JOB_OPTIONS = ['housekeeper', 'highschool_teacher', 'lawyer', 'corporate_employee'];
 const ALL_JOB_CODES = Object.keys(JOB_DEFINITIONS);

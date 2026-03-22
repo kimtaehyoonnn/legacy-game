@@ -10,6 +10,19 @@ body { background: #1a1a1a; color: #2d3436; font-family: 'Pretendard', sans-seri
 .speed-btn.active { background: #d63031; color: white; }
 .speed-btn.stop.active { background: #34495e; color: white; }
 
+.volume-control { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+#mute-btn { background: none; border: none; font-size: 18px; cursor: pointer; padding: 2px 4px; }
+#volume-slider { flex: 1; height: 6px; -webkit-appearance: none; appearance: none; background: #dfe6e9; border-radius: 3px; outline: none; cursor: pointer; }
+#volume-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: #d63031; border-radius: 50%; cursor: pointer; }
+#volume-slider::-moz-range-thumb { width: 14px; height: 14px; background: #d63031; border-radius: 50%; cursor: pointer; border: none; }
+
+#status-modal { position: fixed; z-index: 9998; background: white; padding: 25px; border-radius: 20px; display: none; width: 280px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.4); border: 3px solid #2c3e50; font-family: 'Alimjang', sans-serif; }
+#status-close-btn { position: absolute; top: 10px; right: 14px; background: none; border: none; font-size: 20px; cursor: pointer; color: #636e72; }
+#status-close-btn:hover { color: #d63031; }
+.status-name { font-size: 20px; font-weight: bold; margin-bottom: 12px; color: #2d3436; }
+.status-info { font-size: 13px; color: #636e72; margin-bottom: 10px; }
+.status-traits { text-align: left; font-size: 14px; line-height: 2; padding: 10px; background: #f8f9fa; border-radius: 10px; }
+
 #event-modal { position: fixed; z-index: 9999; background: white; padding: 25px; border-radius: 20px; display: none; width: 22vw; min-width: 280px; max-width: 450px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5); border: 4px solid #2c3e50; max-height: 85vh; overflow-y: auto; font-family: 'Alimjang', sans-serif; }
 .choice-btn { background: #fff; border: 2px solid #eee; padding: 15px; margin: 8px 0; border-radius: 12px; cursor: pointer; width: 100%; text-align: left; font-family: inherit; }
 .choice-btn:hover { border-color: #d63031; background: #fff5f5; }

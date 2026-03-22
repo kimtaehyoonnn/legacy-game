@@ -1,7 +1,45 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-let nodes = [], nextId = 0, scale = 0.5; 
+// 사운드 관리
+const SOUNDS = {
+    bgmMain: document.getElementById('bgm-main'),
+};
+let savedVolume = 0.4;
+SOUNDS.bgmMain.volume = savedVolume;
+
+function startBgm() {
+    SOUNDS.bgmMain.play().catch(() => {});
+    document.removeEventListener('click', startBgm);
+    document.removeEventListener('touchstart', startBgm);
+}
+document.addEventListener('click', startBgm);
+document.addEventListener('touchstart', startBgm);
+
+function setVolume(val) {
+    const v = Math.max(0, Math.min(100, Number(val))) / 100;
+    SOUNDS.bgmMain.volume = v;
+    SOUNDS.bgmMain.muted = false;
+    savedVolume = v;
+    document.getElementById('mute-btn').textContent = v === 0 ? '🔇' : '🔊';
+}
+
+function toggleMute() {
+    const isMuted = !SOUNDS.bgmMain.muted;
+    SOUNDS.bgmMain.muted = isMuted;
+    const btn = document.getElementById('mute-btn');
+    const slider = document.getElementById('volume-slider');
+    if (isMuted) {
+        btn.textContent = '🔇';
+        slider.value = 0;
+    } else {
+        btn.textContent = '🔊';
+        slider.value = Math.round(savedVolume * 100);
+    }
+}
+
+let nodes = [], nextId = 0, scale = 0.5;
+const nodeMap = new Map(); 
 let camX, camY, targetCamX, targetCamY, isSliding = false;
 let isDragging = false, lastTouchX = 0, lastTouchY = 0, initialPinchDistance = null;
 let currentSpeed = 1, monthTimer, isEventActive = false, globalMonths = 0;
@@ -33,7 +71,6 @@ function restoreCamera() {
         savedScale = null;
     }
 }
-let drawCallCount = 0;  // 💡 draw() 호출 횟수 추적
 let yearlyEventQueue = [];
 let GENERAL_EVENT_DEFINITIONS = [];
 const INITIAL_FAMILY_ASSET_KRW = 10_000_000;
@@ -42,99 +79,6 @@ let lastMonthlyCashflowKrw = 0;
 
 // 플로팅 텍스트 (월급 연출)
 const floatingTexts = [];
-const EVENT_GROUP_OPS = new Set(['and', 'or']);
-const EVENT_LEAF_OPERATORS = new Set(['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in']);
-const EVENT_RESULT_TYPES = new Set(['none', 'disease', 'trait_delta', 'set_job']);
-
-// 💡 특성 데이터 정의
-const TRAITS_DATA = {
-    app: [
-        { tier: 'SSR', name: '절세미인' },
-        { tier: 'SSR', name: '꽃미남' },
-        { tier: 'SR', name: '잘생긴편' },
-        { tier: 'SR', name: '예쁜편' },
-        { tier: 'R', name: '괜찮은외모' },
-        { tier: 'R', name: '평범한외모' }
-    ],
-    per: [
-        { tier: 'SSR', name: '강단 있음' },
-        { tier: 'SSR', name: '따뜻한마음' },
-        { tier: 'SR', name: '신중함' },
-        { tier: 'SR', name: '적극적' },
-        { tier: 'R', name: '소심함' },
-        { tier: 'R', name: '평범한성격' }
-    ],
-    val: [
-        { tier: 'SSR', name: '명예심강함' },
-        { tier: 'SSR', name: '의리있음' },
-        { tier: 'SR', name: '현실주의' },
-        { tier: 'SR', name: '낙관주의' },
-        { tier: 'R', name: '이기주의' },
-        { tier: 'R', name: '무관심' }
-    ],
-    hlt: [
-        { tier: 'SSR', name: '철강체' },
-        { tier: 'SSR', name: '건강함' },
-        { tier: 'SR', name: '보통체력' },
-        { tier: 'SR', name: '약간약함' },
-        { tier: 'R', name: '허약체질' },
-        { tier: 'R', name: '병약함' }
-    ]
-};
-
-const EVENT_RESULT_HANDLERS = {
-    none: () => {},
-    disease: (result, person) => {
-        if (!person || !Object.prototype.hasOwnProperty.call(result, 'disease')) return;
-        person.disease = result.disease;
-    },
-    trait_delta: (result, person) => {
-        if (!person || !person.traits) return;
-        const traitPool = TRAITS_DATA[result.trait];
-        if (!Array.isArray(traitPool) || traitPool.length === 0) return;
-
-        const normalizedDelta = Math.max(-2, Math.min(2, Math.trunc(result.delta)));
-        if (normalizedDelta === 0) return;
-
-        const currentTrait = person.traits[result.trait];
-        let currentIndex = traitPool.findIndex(t => t.name === currentTrait?.name && t.tier === currentTrait?.tier);
-        if (currentIndex < 0) currentIndex = Math.floor(traitPool.length / 2);
-
-        const nextIndex = Math.max(0, Math.min(traitPool.length - 1, currentIndex + normalizedDelta));
-        person.traits[result.trait] = traitPool[nextIndex];
-    },
-    set_job: (result, person) => {
-        if (!person || typeof result.jobCode !== 'string') return;
-        setPersonJob(person, result.jobCode, globalMonths);
-    }
-};
-
-function isPlainObject(value) {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function buildGameContext() {
-    return {
-        globalMonths,
-        year: Math.floor(globalMonths / 12),
-        totalPopulation: nodes.length,
-        alivePopulation: nodes.filter(n => n.isAlive).length
-    };
-}
-
-function getFixedMonthlyExpenseKrw(age) {
-    const normalizedAge = Number.isFinite(age) ? Math.max(0, Math.floor(age)) : 0;
-    if (normalizedAge < 20) return 1_000_000;
-    if (normalizedAge < 30) return 1_500_000;
-    if (normalizedAge < 55) return 2_500_000;
-    if (normalizedAge < 70) return 1_500_000;
-    return 1_000_000;
-}
-
-function getFixedMonthlyIncomeKrw(person) {
-    if (!person || !Number.isFinite(person.jobMonthlyIncomeKrw)) return 0;
-    return person.jobMonthlyIncomeKrw;
-}
 
 function setPersonJob(person, jobCode, assignedMonth = globalMonths) {
     if (!person) return;
@@ -182,360 +126,6 @@ function assignRandomCareerForLateJoiner(person) {
     setPersonJob(person, randomJobCode, globalMonths);
 }
 
-function isAliveAndValidInGameFamilyMember(person) {
-    return !!person && person.isAlive && person.isMain;
-}
-
-function settleMonthlyFamilyAsset() {
-    let monthlyCashflowKrw = 0;
-    for (const person of nodes) {
-        if (!isAliveAndValidInGameFamilyMember(person)) continue;
-        const income = getFixedMonthlyIncomeKrw(person);
-        const expense = getFixedMonthlyExpenseKrw(person.age);
-        const net = income - expense;
-        monthlyCashflowKrw += net;
-        // 플로팅 텍스트 스폰
-        const netMan = Math.floor(net / 10000);
-        if (netMan !== 0) {
-            floatingTexts.push({
-                person: person,
-                offsetY: 0,
-                text: `${net > 0 ? '+' : ''}${netMan}만`,
-                color: net > 0 ? '#27ae60' : '#e74c3c',
-                alpha: 1
-            });
-        }
-    }
-    lastMonthlyCashflowKrw = monthlyCashflowKrw;
-    familyAssetKrw += monthlyCashflowKrw;
-}
-
-function formatKoreanMoneyUnits(amountKrw) {
-    const safeAmount = Number.isFinite(amountKrw) ? Math.trunc(amountKrw) : 0;
-    const isNegative = safeAmount < 0;
-    let remaining = Math.abs(safeAmount);
-
-    const units = [
-        { value: 1_000_000_000_000, label: '조' },
-        { value: 100_000_000, label: '억' },
-        { value: 10_000, label: '만' }
-    ];
-
-    const parts = [];
-    for (const unit of units) {
-        if (remaining < unit.value) continue;
-        const amount = Math.floor(remaining / unit.value);
-        parts.push(`${amount.toLocaleString('ko-KR')}${unit.label}`);
-        remaining %= unit.value;
-    }
-
-    if (remaining > 0 || parts.length === 0) {
-        parts.push(`${remaining.toLocaleString('ko-KR')}원`);
-    } else {
-        const lastIndex = parts.length - 1;
-        parts[lastIndex] = `${parts[lastIndex]}원`;
-    }
-
-    return `${isNegative ? '-' : ''}${parts.join(' ')}`;
-}
-
-function validateConditionNode(node, path, errors) {
-    if (!isPlainObject(node)) {
-        errors.push(`${path}: 조건은 객체여야 합니다.`);
-        return;
-    }
-
-    const hasGroup = Object.prototype.hasOwnProperty.call(node, 'op');
-    if (hasGroup) {
-        if (!EVENT_GROUP_OPS.has(node.op)) {
-            errors.push(`${path}.op: '${node.op}'는 지원되지 않습니다.`);
-        }
-        if (!Array.isArray(node.conditions) || node.conditions.length === 0) {
-            errors.push(`${path}.conditions: and/or 조건은 1개 이상 필요합니다.`);
-            return;
-        }
-        node.conditions.forEach((child, index) => {
-            validateConditionNode(child, `${path}.conditions[${index}]`, errors);
-        });
-        return;
-    }
-
-    if (!['person', 'game'].includes(node.target)) {
-        errors.push(`${path}.target: 'person' 또는 'game'이어야 합니다.`);
-    }
-    if (typeof node.field !== 'string' || !node.field.trim()) {
-        errors.push(`${path}.field: 문자열 필드명이 필요합니다.`);
-    }
-    if (!EVENT_LEAF_OPERATORS.has(node.operator)) {
-        errors.push(`${path}.operator: '${node.operator}'는 지원되지 않습니다.`);
-    }
-    if (!Object.prototype.hasOwnProperty.call(node, 'value')) {
-        errors.push(`${path}.value: 비교 값이 필요합니다.`);
-    }
-    if ((node.operator === 'in' || node.operator === 'not_in') && !Array.isArray(node.value)) {
-        errors.push(`${path}.value: in/not_in 연산자는 배열 값이 필요합니다.`);
-    }
-}
-
-function validateChoiceResult(result, path, errors) {
-    if (!isPlainObject(result)) {
-        errors.push(`${path}: result는 객체여야 합니다.`);
-        return;
-    }
-    if (!EVENT_RESULT_TYPES.has(result.type)) {
-        errors.push(`${path}.type: '${result.type}'는 지원되지 않는 결과 타입입니다.`);
-        return;
-    }
-
-    if (result.type === 'disease') {
-        const isValidDisease = result.disease === null || typeof result.disease === 'string';
-        if (!isValidDisease) {
-            errors.push(`${path}.disease: 문자열 또는 null 이어야 합니다.`);
-        }
-    }
-
-    if (result.type === 'trait_delta') {
-        if (!Object.prototype.hasOwnProperty.call(TRAITS_DATA, result.trait)) {
-            errors.push(`${path}.trait: '${result.trait}'는 지원되지 않는 trait입니다.`);
-        }
-        if (typeof result.delta !== 'number' || !Number.isFinite(result.delta)) {
-            errors.push(`${path}.delta: 숫자여야 합니다.`);
-        } else if (result.delta < -2 || result.delta > 2) {
-            errors.push(`${path}.delta: -2 ~ 2 범위여야 합니다.`);
-        }
-    }
-
-    if (result.type === 'set_job') {
-        if (typeof result.jobCode !== 'string' || !result.jobCode.trim()) {
-            errors.push(`${path}.jobCode: 문자열 직업 코드가 필요합니다.`);
-        } else if (!Object.prototype.hasOwnProperty.call(JOB_DEFINITIONS, result.jobCode)) {
-            errors.push(`${path}.jobCode: '${result.jobCode}'는 지원되지 않는 직업 코드입니다.`);
-        }
-    }
-}
-
-function validateEventChoice(choice, path, errors) {
-    if (!isPlainObject(choice)) {
-        errors.push(`${path}: choice는 객체여야 합니다.`);
-        return;
-    }
-    if (typeof choice.id !== 'string' || !choice.id.trim()) {
-        errors.push(`${path}.id: 문자열이 필요합니다.`);
-    }
-    if (typeof choice.text !== 'string' || !choice.text.trim()) {
-        errors.push(`${path}.text: 문자열이 필요합니다.`);
-    }
-    validateChoiceResult(choice.result, `${path}.result`, errors);
-}
-
-function validateEventDefinition(eventDef, index, seenCodes) {
-    const path = `event[${index}]`;
-    const errors = [];
-
-    if (!isPlainObject(eventDef)) {
-        errors.push(`${path}: 이벤트 정의는 객체여야 합니다.`);
-        return errors;
-    }
-
-    if (typeof eventDef.code !== 'string' || !eventDef.code.trim()) {
-        errors.push(`${path}.code: 문자열 코드가 필요합니다.`);
-    } else if (seenCodes.has(eventDef.code)) {
-        errors.push(`${path}.code: 중복 코드 '${eventDef.code}' 입니다.`);
-    } else {
-        seenCodes.add(eventDef.code);
-    }
-
-    if (typeof eventDef.text !== 'string' || !eventDef.text.trim()) {
-        errors.push(`${path}.text: 이벤트 문장이 필요합니다.`);
-    }
-
-    if (typeof eventDef.probability !== 'number' || !Number.isFinite(eventDef.probability)) {
-        errors.push(`${path}.probability: 숫자여야 합니다.`);
-    } else if (eventDef.probability < 0 || eventDef.probability > 1) {
-        errors.push(`${path}.probability: 0~1 범위여야 합니다.`);
-    }
-
-    validateConditionNode(eventDef.condition, `${path}.condition`, errors);
-
-    if (!Array.isArray(eventDef.choices)) {
-        errors.push(`${path}.choices: 배열이어야 합니다.`);
-    } else {
-        if (eventDef.choices.length < 1 || eventDef.choices.length > 4) {
-            errors.push(`${path}.choices: 선지는 1~4개여야 합니다.`);
-        }
-        const seenChoiceIds = new Set();
-        eventDef.choices.forEach((choice, choiceIndex) => {
-            validateEventChoice(choice, `${path}.choices[${choiceIndex}]`, errors);
-            if (isPlainObject(choice) && typeof choice.id === 'string') {
-                if (seenChoiceIds.has(choice.id)) {
-                    errors.push(`${path}.choices[${choiceIndex}].id: 중복 id '${choice.id}' 입니다.`);
-                }
-                seenChoiceIds.add(choice.id);
-            }
-        });
-    }
-
-    return errors;
-}
-
-function cloneConditionNode(node) {
-    if (!isPlainObject(node)) return node;
-    if (Object.prototype.hasOwnProperty.call(node, 'op')) {
-        return {
-            op: node.op,
-            conditions: node.conditions.map(cloneConditionNode)
-        };
-    }
-    return {
-        target: node.target,
-        field: node.field,
-        operator: node.operator,
-        value: Array.isArray(node.value) ? [...node.value] : node.value
-    };
-}
-
-function normalizeEventDefinitions(rawDefs) {
-    if (!Array.isArray(rawDefs)) {
-        console.error('[EVENT VALIDATION] GENERAL_EVENTS는 배열이어야 합니다.');
-        return [];
-    }
-
-    const normalized = [];
-    const seenCodes = new Set();
-
-    rawDefs.forEach((eventDef, index) => {
-        const errors = validateEventDefinition(eventDef, index, seenCodes);
-        if (errors.length > 0) {
-            console.error('[EVENT VALIDATION] 이벤트 스킵:', errors.join(' | '));
-            return;
-        }
-
-        normalized.push({
-            code: eventDef.code.trim(),
-            text: eventDef.text.trim(),
-            probability: eventDef.probability,
-            condition: cloneConditionNode(eventDef.condition),
-            choices: eventDef.choices.map(choice => ({
-                id: choice.id,
-                text: choice.text,
-                result: { ...choice.result }
-            }))
-        });
-    });
-
-    console.log(`[EVENT VALIDATION] 로드 완료: ${normalized.length}/${rawDefs.length}`);
-    return normalized;
-}
-
-GENERAL_EVENT_DEFINITIONS = normalizeEventDefinitions(
-    (typeof GENERAL_EVENTS !== 'undefined' && Array.isArray(GENERAL_EVENTS)) ? GENERAL_EVENTS : []
-);
-
-function ensureEventState(person) {
-    if (!person.eventState || typeof person.eventState !== 'object') {
-        person.eventState = {
-            firedCodes: new Set(),
-            choiceByCode: {}
-        };
-        return;
-    }
-    if (!(person.eventState.firedCodes instanceof Set)) {
-        const prevCodes = Array.isArray(person.eventState.firedCodes) ? person.eventState.firedCodes : [];
-        person.eventState.firedCodes = new Set(prevCodes);
-    }
-    if (!person.eventState.choiceByCode || typeof person.eventState.choiceByCode !== 'object') {
-        person.eventState.choiceByCode = {};
-    }
-}
-
-function getConditionValue(target, field) {
-    if (!target || typeof field !== 'string') return undefined;
-    return field.split('.').reduce((acc, key) => {
-        if (acc === null || acc === undefined) return undefined;
-        if (!Object.prototype.hasOwnProperty.call(acc, key)) return undefined;
-        return acc[key];
-    }, target);
-}
-
-function buildPersonConditionContext(person) {
-    const monthsSinceJobAssigned = Number.isFinite(person?.jobAssignedMonth)
-        ? globalMonths - person.jobAssignedMonth
-        : null;
-
-    return {
-        ...person,
-        monthsSinceJobAssigned
-    };
-}
-
-function compareConditionValue(left, operator, right) {
-    switch (operator) {
-        case 'eq': return left === right;
-        case 'neq': return left !== right;
-        case 'gt': return left > right;
-        case 'gte': return left >= right;
-        case 'lt': return left < right;
-        case 'lte': return left <= right;
-        case 'in': return Array.isArray(right) && right.includes(left);
-        case 'not_in': return Array.isArray(right) && !right.includes(left);
-        default: return false;
-    }
-}
-
-function evaluateCondition(node, person, gameCtx) {
-    if (!node || typeof node !== 'object') return false;
-
-    if (node.op === 'and' || node.op === 'or') {
-        if (!Array.isArray(node.conditions) || node.conditions.length === 0) return false;
-        if (node.op === 'and') return node.conditions.every(child => evaluateCondition(child, person, gameCtx));
-        return node.conditions.some(child => evaluateCondition(child, person, gameCtx));
-    }
-
-    const source = node.target === 'game' ? gameCtx : person;
-    const left = getConditionValue(source, node.field);
-    return compareConditionValue(left, node.operator, node.value);
-}
-
-function collectEligibleEvents(person, gameCtx) {
-    if (!person || !person.isAlive || !person.isMain) return [];
-    ensureEventState(person);
-    const personCtx = buildPersonConditionContext(person);
-
-    const eligible = [];
-    for (const eventDef of GENERAL_EVENT_DEFINITIONS) {
-        if (!eventDef || !eventDef.code || person.eventState.firedCodes.has(eventDef.code)) continue;
-        if (!evaluateCondition(eventDef.condition, personCtx, gameCtx)) continue;
-
-        const probability = typeof eventDef.probability === 'number' ? eventDef.probability : 0;
-        const normalizedProbability = Math.max(0, Math.min(1, probability));
-        if (Math.random() <= normalizedProbability) {
-            eligible.push(eventDef);
-        }
-    }
-    return eligible;
-}
-
-function applyEventResult(result, person, gameCtx) {
-    if (!isPlainObject(result)) return;
-    const handler = EVENT_RESULT_HANDLERS[result.type];
-    if (!handler) {
-        console.warn('[EVENT RESULT] 알 수 없는 결과 타입:', result.type);
-        return;
-    }
-    handler(result, person, gameCtx);
-}
-
-function applyEventChoice(person, eventDef, choiceId, gameCtx) {
-    ensureEventState(person);
-    person.eventState.choiceByCode[eventDef.code] = choiceId;
-    person.eventState.firedCodes.add(eventDef.code);
-
-    const selectedChoice = (eventDef.choices || []).find(choice => choice.id === choiceId);
-    if (selectedChoice) {
-        applyEventResult(selectedChoice.result, person, gameCtx || buildGameContext());
-    }
-}
-
 function enqueueYearlyEvents() {
     if (!GENERAL_EVENT_DEFINITIONS.length) return;
 
@@ -559,7 +149,7 @@ function enqueueYearlyEvents() {
 function openNextQueuedEvent() {
     while (yearlyEventQueue.length > 0) {
         const queued = yearlyEventQueue.shift();
-        const person = nodes.find(n => n.id === queued.personId);
+        const person = nodeMap.get(queued.personId);
         if (!person || !person.isAlive || !person.isMain) continue;
 
         if (!queued.eventDef) continue;
@@ -593,115 +183,6 @@ function openNextQueuedEvent() {
     return false;
 }
 
-function runEventEngineSelfTests() {
-    const person = { age: 20, isMain: true, stats: { hp: 10 } };
-    const gameCtx = { year: 1, globalMonths: 12 };
-    const tests = [
-        {
-            name: 'leaf eq',
-            node: { target: 'person', field: 'age', operator: 'eq', value: 20 },
-            expected: true
-        },
-        {
-            name: 'leaf gt',
-            node: { target: 'person', field: 'age', operator: 'gt', value: 25 },
-            expected: false
-        },
-        {
-            name: 'group and',
-            node: {
-                op: 'and',
-                conditions: [
-                    { target: 'person', field: 'age', operator: 'eq', value: 20 },
-                    { target: 'person', field: 'isMain', operator: 'eq', value: true }
-                ]
-            },
-            expected: true
-        },
-        {
-            name: 'group or nested',
-            node: {
-                op: 'or',
-                conditions: [
-                    { target: 'person', field: 'age', operator: 'lt', value: 10 },
-                    {
-                        op: 'and',
-                        conditions: [
-                            { target: 'game', field: 'year', operator: 'eq', value: 1 },
-                            { target: 'person', field: 'stats.hp', operator: 'gte', value: 10 }
-                        ]
-                    }
-                ]
-            },
-            expected: true
-        },
-        {
-            name: 'leaf in',
-            node: { target: 'person', field: 'age', operator: 'in', value: [18, 19, 20] },
-            expected: true
-        },
-        {
-            name: 'leaf not_in',
-            node: { target: 'person', field: 'age', operator: 'not_in', value: [1, 2, 3] },
-            expected: true
-        }
-    ];
-
-    const failedConditions = tests.filter(test => evaluateCondition(test.node, person, gameCtx) !== test.expected);
-
-    const invalidEventErrors = validateEventDefinition({
-        code: '',
-        text: '',
-        probability: 2,
-        condition: { target: 'person', field: 'age', operator: 'unknown', value: 10 },
-        choices: []
-    }, 0, new Set());
-
-    const resultTestPerson = {
-        age: 20,
-        careerStage: 'none',
-        jobCode: null,
-        jobName: null,
-        jobMonthlyIncomeKrw: 0,
-        jobAssignedMonth: null,
-        traits: {
-            app: TRAITS_DATA.app[0],
-            per: TRAITS_DATA.per[2],
-            val: TRAITS_DATA.val[2],
-            hlt: TRAITS_DATA.hlt[2]
-        },
-        disease: null
-    };
-    applyEventResult({ type: 'disease', disease: '감기' }, resultTestPerson, gameCtx);
-    applyEventResult({ type: 'trait_delta', trait: 'per', delta: 1 }, resultTestPerson, gameCtx);
-    applyEventResult({ type: 'set_job', jobCode: 'housekeeper' }, resultTestPerson, gameCtx);
-    const resultHandlersPassed = resultTestPerson.disease === '감기'
-        && !!resultTestPerson.traits.per
-        && resultTestPerson.jobCode === 'housekeeper'
-        && resultTestPerson.careerStage === 'selected';
-
-    const allPassed = failedConditions.length === 0 && invalidEventErrors.length > 0 && resultHandlersPassed;
-    if (allPassed) {
-        console.log('[EVENT ENGINE TEST] 통과 (조건/검증/결과핸들러)');
-    } else {
-        if (failedConditions.length > 0) {
-            console.error('[EVENT ENGINE TEST] 조건 평가 실패:', failedConditions.map(test => test.name).join(', '));
-        }
-        if (invalidEventErrors.length === 0) {
-            console.error('[EVENT ENGINE TEST] 검증 테스트 실패: 잘못된 이벤트를 잡지 못했습니다.');
-        }
-        if (!resultHandlersPassed) {
-            console.error('[EVENT ENGINE TEST] 결과 핸들러 테스트 실패');
-        }
-    }
-}
-
-function getRandomTrait(category) {
-    if (!TRAITS_DATA[category]) return { tier: 'N', name: '평범함' };
-    const traits = TRAITS_DATA[category];
-    return traits[Math.floor(Math.random() * traits.length)];
-}
-
 function getRandomVisuals(gender = 'M') {
     const getRandomAsset = (assetType) => {
         if (assetType === 'face') {
@@ -725,13 +206,6 @@ function getRandomVisuals(gender = 'M') {
     };
 }
 
-function getTierColor(tier) {
-    if(tier === 'SSR') return '#e67e22'; 
-    if(tier === 'SR') return '#9b59b6';
-    if(tier === 'R') return '#2980b9'; 
-    return '#7f8c8d';
-}
-
 function updateLayout() {
     const NODE_SPACING = 300; 
     const PARTNER_SPACING = 280; 
@@ -743,7 +217,7 @@ function updateLayout() {
 
         let childrenWidth = 0;
         node.children.forEach(childId => {
-            let childNode = nodes.find(n => n.id === childId);
+            let childNode = nodeMap.get(childId);
             if(childNode) childrenWidth += getSubTreeWidth(childNode);
         });
         childrenWidth += (node.children.length - 1) * NODE_SPACING;
@@ -753,7 +227,7 @@ function updateLayout() {
     function setPositions(node, centerX, level) {
         node.targetY = level * LEVEL_HEIGHT;
         if (node.partner !== null) {
-            const partnerNode = nodes.find(n => n.id === node.partner);
+            const partnerNode = nodeMap.get(node.partner);
             if (partnerNode) {
                 partnerNode.targetY = level * LEVEL_HEIGHT;
                 node.targetX = centerX - (PARTNER_SPACING / 2);
@@ -764,7 +238,7 @@ function updateLayout() {
         }
 
         if (node.children.length > 0) {
-            const childNodes = node.children.map(id => nodes.find(n => n.id === id)).filter(n => n);
+            const childNodes = node.children.map(id => nodeMap.get(id)).filter(n => n);
             const childWidths = childNodes.map(c => getSubTreeWidth(c));
             const totalWidth = childWidths.reduce((sum, w) => sum + w, 0) + (childNodes.length - 1) * NODE_SPACING;
             
@@ -783,7 +257,7 @@ function updateLayout() {
 function initGame() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    nodes = []; nextId = 0; globalMonths = 0;
+    nodes = []; nodeMap.clear(); nextId = 0; globalMonths = 0;
     familyAssetKrw = INITIAL_FAMILY_ASSET_KRW;
     lastMonthlyCashflowKrw = 0;
     yearlyEventQueue = [];
@@ -800,16 +274,10 @@ function initGame() {
     founder.traits = { app: getRandomTrait('app'), per: getRandomTrait('per'), val: getRandomTrait('val'), hlt: getRandomTrait('hlt') };
     founder.visuals = getRandomVisuals('M');
     nodes.push(founder);
+    nodeMap.set(founder.id, founder);
     
     // 레이아웃 업데이트로 targetX, targetY 설정
     updateLayout();
-    
-    // 캐릭터 좌표 확인 로그
-    console.log("[GAME INIT] Founder 생성 완료");
-    console.log("[GAME INIT] Founder x:", founder.x, ", y:", founder.y);
-    console.log("[GAME INIT] Founder targetX:", founder.targetX, ", targetY:", founder.targetY);
-    console.log("[GAME INIT] Canvas size:", canvas.width, "x", canvas.height);
-    console.log("[GAME INIT] Camera pos:", camX, ",", camY);
     
     updateUI(); 
     // 속도 버튼 선택 후 타이머 시작
@@ -905,20 +373,20 @@ function startTimers() {
             if (n.isMain && !n.isSpouse) {
                 if (n.age >= 20 && !n.isMarried && Math.random() < 0.1) { triggerMarriage(n); break; }
                 if (n.isMarried && n.children.length < 3 && Math.random() < 0.03) {
-                    let wife = n.gender === 'F' ? n : nodes.find(s => s.id === n.partner);
+                    let wife = n.gender === 'F' ? n : nodeMap.get(n.partner);
                     if (wife && wife.isAlive && wife.age < wife.menopauseAge) { triggerBirth(n); break; }
                 }
             }
         }
         const yearText = `${Math.floor(globalMonths/12)}년째 가문 진행 중`;
         document.getElementById('year-ui').innerText = yearText;
-    }, 1000 / currentSpeed);
+    }, 2000 / currentSpeed);
 }
 
 function triggerSuccession(deceasedHead) {
     isEventActive = true;
     focusOnPerson(deceasedHead);
-    const livingChildren = deceasedHead.children.map(id => nodes.find(n => n.id === id)).filter(n => n && n.isAlive);
+    const livingChildren = deceasedHead.children.map(id => nodeMap.get(id)).filter(n => n && n.isAlive);
     if (livingChildren.length === 0) {
         document.getElementById('e-title').innerText = "가문의 몰락";
         document.getElementById('e-desc').innerText = "가주가 후계자 없이 사망하여 가문의 대가 끊겼습니다.";
@@ -980,7 +448,8 @@ function triggerMarriage(p) {
             partner.traits = { app: c_app, per: c_per, val: c_val, hlt: c_hlt };
             partner.visuals = c_visuals;
             assignRandomCareerForLateJoiner(partner);
-            nodes.push(partner); 
+            nodes.push(partner);
+            nodeMap.set(partner.id, partner);
             updateLayout(); updateUI(); closeEvent();
         };
         container.appendChild(btn);
@@ -1006,7 +475,7 @@ function inheritVisuals(p1Visuals, p2Visuals, gender = 'M') {
 }
 
 function triggerBirth(p) {
-    const partner = nodes.find(n => n.id === p.partner);
+    const partner = nodeMap.get(p.partner);
     if (!partner || !partner.isAlive) return;
     isEventActive = true;
     const gender = Math.random() > 0.5 ? 'M' : 'F';
@@ -1037,7 +506,7 @@ function triggerBirth(p) {
         const child = new PersonNode(childName, gender, midX, p.y + 50, p.level + 1, 0, [p.id, p.partner], false, p.isMain, false);
         child.traits = { app: c_app, per: c_per, val: c_val, hlt: c_hlt };
         child.visuals = c_visuals;
-        p.children.push(child.id); nodes.push(child); updateLayout(); 
+        p.children.push(child.id); nodes.push(child); nodeMap.set(child.id, child); updateLayout();
         targetCamX = (canvas.width / 2) - (child.targetX * scale); targetCamY = (canvas.height / 2) - (child.targetY * scale); isSliding = true;
         updateUI(); closeEvent();
     };
@@ -1045,8 +514,8 @@ function triggerBirth(p) {
 }
 
 function markAsSideBranch(nodeId) {
-    const node = nodes.find(n => n.id === nodeId);
-    if(node) { node.isMain = false; if(node.partner !== null) { const pNode = nodes.find(n => n.id === node.partner); if(pNode) pNode.isMain = false; } node.children.forEach(c => markAsSideBranch(c)); }
+    const node = nodeMap.get(nodeId);
+    if(node) { node.isMain = false; if(node.partner !== null) { const pNode = nodeMap.get(node.partner); if(pNode) pNode.isMain = false; } node.children.forEach(c => markAsSideBranch(c)); }
 }
 
 function updateUI() {
@@ -1090,15 +559,73 @@ function closeEvent() {
 function setSpeed(s, btn) { currentSpeed = s; document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); startTimers(); }
 function updateCamera() { if (isSliding) { if (targetScale != null) { scale += (targetScale - scale) * 0.1; if (Math.abs(targetScale - scale) < 0.005) { scale = targetScale; targetScale = null; } } if (focusTarget) { targetCamX = (canvas.width / 2) - (focusTarget.x * scale); targetCamY = (canvas.height / 2) - (focusTarget.y * scale); } camX += (targetCamX - camX) * 0.1; camY += (targetCamY - camY) * 0.1; if (Math.abs(targetCamX - camX) < 1 && Math.abs(targetCamY - camY) < 1 && targetScale == null) { isSliding = false; focusTarget = null; } } }
 
-window.addEventListener('mousedown', () => isDragging = true);
-window.addEventListener('mousemove', e => { 
+let dragMoved = false;
+canvas.addEventListener('mousedown', (e) => { isDragging = true; dragMoved = false; });
+canvas.addEventListener('mousemove', e => { 
     if (isDragging) { 
+        dragMoved = true;
         camX += e.movementX; 
         camY += e.movementY; 
         isSliding = false;
     }
 });
 window.addEventListener('mouseup', () => isDragging = false);
+
+canvas.addEventListener('click', e => {
+    if (dragMoved) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left - camX) / scale;
+    const my = (e.clientY - rect.top - camY) / scale;
+    for (let i = nodes.length - 1; i >= 0; i--) {
+        const n = nodes[i];
+        const dx = mx - n.x;
+        const dy = my - n.y;
+        if (dx * dx + dy * dy < n.radius * n.radius * 2) {
+            showStatus(n);
+            return;
+        }
+    }
+    closeStatus();
+});
+
+let statusTarget = null;
+
+function showStatus(person) {
+    statusTarget = person;
+    const jobLabel = person.jobName || (person.careerStage === 'retired' ? '은퇴' : '무직');
+    const aliveText = person.isAlive ? '생존' : '사망';
+    const diseaseText = person.disease ? ` (현재: ${person.disease})` : '';
+    const headText = person.isHead ? ' 👑 현 가주' : '';
+    const content = document.getElementById('status-content');
+    content.innerHTML = `
+        <div class="status-name">${person.name}${headText}</div>
+        <div class="status-info">${person.gender === 'M' ? '남' : '여'} · ${person.age}세 · ${aliveText}${diseaseText}</div>
+        <div class="status-info">직업: ${jobLabel}</div>
+        <div class="status-traits">
+            <span style="color:${getTierColor(person.traits.app.tier)}"><b>[외모]</b> ${person.traits.app.name}</span><br>
+            <span style="color:${getTierColor(person.traits.per.tier)}"><b>[성격]</b> ${person.traits.per.name}</span><br>
+            <span style="color:${getTierColor(person.traits.val.tier)}"><b>[가치관]</b> ${person.traits.val.name}</span><br>
+            <span style="color:${getTierColor(person.traits.hlt.tier)}"><b>[건강]</b> ${person.traits.hlt.name}</span>
+        </div>`;
+    updateStatusPosition();
+    document.getElementById('status-modal').style.display = 'block';
+}
+
+function updateStatusPosition() {
+    if (!statusTarget) return;
+    const modal = document.getElementById('status-modal');
+    const charScreenX = statusTarget.x * scale + camX;
+    const charScreenY = statusTarget.y * scale + camY;
+    const offset = 120;
+    modal.style.left = (charScreenX - offset) + 'px';
+    modal.style.top = charScreenY + 'px';
+    modal.style.transform = 'translate(-100%, -50%)';
+}
+
+function closeStatus() {
+    statusTarget = null;
+    document.getElementById('status-modal').style.display = 'none';
+}
 
 canvas.addEventListener('touchstart', e => { if (e.touches.length === 2) { initialPinchDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); isDragging = false; } else { isDragging = true; lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY; } }, {passive: false});
 canvas.addEventListener('touchmove', e => { e.preventDefault(); if (e.touches.length === 2) { const currentDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); if (initialPinchDistance) { scale = Math.max(0.2, Math.min(2, scale + (currentDistance - initialPinchDistance) * 0.005)); initialPinchDistance = currentDistance; } } else if (isDragging && e.touches.length === 1) { camX += e.touches[0].clientX - lastTouchX; camY += e.touches[0].clientY - lastTouchY; lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY; isSliding = false; } }, {passive: false});
@@ -1126,18 +653,31 @@ function animate() {
     ctx.imageSmoothingQuality = 'high';
     ctx.translate(Math.round(camX), Math.round(camY));
     ctx.scale(scale, scale);
+
+    // 뷰포트 컬링: 화면에 보이는 영역 계산
+    const margin = 250; // 캐릭터 크기 + 텍스트 여유
+    const vpLeft   = -camX / scale - margin;
+    const vpRight  = (canvas.width - camX) / scale + margin;
+    const vpTop    = -camY / scale - margin;
+    const vpBottom = (canvas.height - camY) / scale + margin;
     
     ctx.lineWidth = 3;
     nodes.forEach(n => {
         // 📌 부모→자녀 연결선 그리기
         if(n.parents.length) {
-            const p1 = nodes.find(node => node.id === n.parents[0]);
+            const p1 = nodeMap.get(n.parents[0]);
             if(p1) {
-                const partner = nodes.find(node => node.id === p1.partner);
+                const partner = p1.partner !== null ? nodeMap.get(p1.partner) : null;
                 const midX = partner ? (p1.x + partner.x) / 2 : p1.x; 
                 const midY = partner ? (p1.y + partner.y) / 2 : p1.y;
+
+                // 컬링: 양쪽 끝 모두 화면 밖이면 스킵
+                const lineVisible = !(
+                    (n.x < vpLeft && midX < vpLeft) || (n.x > vpRight && midX > vpRight) ||
+                    (n.y < vpTop && midY < vpTop) || (n.y > vpBottom && midY > vpBottom)
+                );
+                if (!lineVisible) return;
                 
-                // 💡 선의 굵기와 색상: 생존 여부에 따라 다르게
                 let lineWidth = 3;
                 let strokeColor = "#cbd5e0";
                 
@@ -1147,10 +687,10 @@ function animate() {
                     strokeColor = "rgba(203, 213, 224, 0.2)";
                     lineWidth = 2;
                 } else if (eitherHead) {
-                    strokeColor = "#d63031";  // 가주 포함: 빨강
+                    strokeColor = "#d63031";
                     lineWidth = 4;
                 } else if (p1.isAlive) {
-                    strokeColor = "#3498db";  // 살아있는 부모: 파랑
+                    strokeColor = "#3498db";
                     lineWidth = 3.5;
                 }
                 
@@ -1165,10 +705,15 @@ function animate() {
         
         // 📌 부부 연결선 (가로선)
         if(n.partner !== null && n.gender === 'M') {
-            const p = nodes.find(node => node.id === n.partner);
+            const p = nodeMap.get(n.partner);
             if(p) {
+                const coupleVisible = !(
+                    (n.x < vpLeft && p.x < vpLeft) || (n.x > vpRight && p.x > vpRight) ||
+                    (n.y < vpTop && p.y < vpTop) || (n.y > vpBottom && p.y > vpBottom)
+                );
+                if (!coupleVisible) return;
                 ctx.lineWidth = n.isHead ? 3.5 : 2.5;
-                ctx.strokeStyle = n.isHead ? "#d63031" : "#9b59b6";  // 가주는 빨강, 아니면 보라
+                ctx.strokeStyle = n.isHead ? "#d63031" : "#9b59b6";
                 ctx.beginPath();
                 ctx.moveTo(n.x, n.y);
                 ctx.lineTo(p.x, p.y);
@@ -1177,7 +722,16 @@ function animate() {
         }
     });
 
-    nodes.forEach(n => n.draw(ctx, scale));
+    // 캐릭터 렌더링 (뷰포트 안에 있는 것만)
+    nodes.forEach(n => {
+        if (n.x >= vpLeft && n.x <= vpRight && n.y >= vpTop && n.y <= vpBottom) {
+            n.draw(ctx, scale);
+        } else {
+            // 화면 밖이라도 위치 보간은 계속
+            n.x += (n.targetX - n.x) * 0.15;
+            n.y += (n.targetY - n.y) * 0.15;
+        }
+    });
 
     // 플로팅 텍스트 렌더 + 업데이트
     ctx.font = 'bold 16px sans-serif';
@@ -1195,10 +749,14 @@ function animate() {
     ctx.globalAlpha = 1;
 
     ctx.restore();
+    if (statusTarget) updateStatusPosition();
     requestAnimationFrame(animate);
 }
 
-window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; initGame(); });
+window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+GENERAL_EVENT_DEFINITIONS = normalizeEventDefinitions(
+    (typeof GENERAL_EVENTS !== 'undefined' && Array.isArray(GENERAL_EVENTS)) ? GENERAL_EVENTS : []
+);
 runEventEngineSelfTests();
 
 // 에셋 순차 탐색 완료 후 게임 시작 (initGame이 loadedAssetCodes 채워진 이후 실행되게 돼)
@@ -1220,23 +778,3 @@ Promise.all([
     animate();
 });
 
-// 실시간 진단 로깅 (3초마다)
-setInterval(() => {
-    if (nodes && nodes.length > 0) {
-        const founder = nodes[0];
-        console.log("[DIAGNOSIS] === 3초 진단 ===");
-        console.log("[DIAGNOSIS] 생존 인구:", nodes.filter(n => n.isAlive).length);
-        console.log("[DIAGNOSIS] 시조 정보:");
-        console.log("  - 이름:", founder.name, ", ID:", founder.id);
-        console.log("  - 나이:", founder.age, ", isAlive:", founder.isAlive, ", isMain:", founder.isMain);
-        console.log("  - 좌표 (x,y):", founder.x.toFixed(1), ",", founder.y.toFixed(1));
-        console.log("  - 재위치 (targetX,targetY):", founder.targetX.toFixed(1), ",", founder.targetY.toFixed(1));
-        console.log("  - isMarried:", founder.isMarried, ", partner:", founder.partner);
-        console.log("[DIAGNOSIS] 이벤트 잠금:", isEventActive);
-        console.log("[DIAGNOSIS] 이벤트 큐:", yearlyEventQueue.length);
-        console.log("[DIAGNOSIS] 경과 월:", globalMonths, "(" + Math.floor(globalMonths/12) + "년)");
-        console.log("[DIAGNOSIS] 게임 속도:", currentSpeed);
-        console.log("[DIAGNOSIS] draw() 호출 횟수:", drawCallCount, "(매 프레임)");
-        drawCallCount = 0; // 리셋
-    }
-}, 3000);
