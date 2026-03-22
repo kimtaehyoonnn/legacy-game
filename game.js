@@ -5,12 +5,43 @@ let nodes = [], nextId = 0, scale = 0.5;
 let camX, camY, targetCamX, targetCamY, isSliding = false;
 let isDragging = false, lastTouchX = 0, lastTouchY = 0, initialPinchDistance = null;
 let currentSpeed = 1, monthTimer, isEventActive = false, globalMonths = 0;
+let savedCamX, savedCamY, savedScale;
+let targetScale = null;
+let focusTarget = null;
+
+function focusOnPerson(person) {
+    savedCamX = camX; savedCamY = camY; savedScale = scale;
+    targetScale = 1.2;
+    focusTarget = person;
+    targetCamX = (canvas.width / 2) - (person.x * scale);
+    targetCamY = (canvas.height / 2) - (person.y * scale);
+    isSliding = true;
+    // 캐릭터 기준 모달 위치 계산 (캐릭터가 화면 중앙에 오므로 우측에 배치)
+    const modal = document.getElementById('event-modal');
+    const charScreenX = canvas.width / 2;
+    const charScreenY = canvas.height / 2;
+    const offset = 120;
+    modal.style.left = (charScreenX + offset) + 'px';
+    modal.style.top = charScreenY + 'px';
+    modal.style.transform = 'translateY(-50%)';
+}
+function restoreCamera() {
+    if (savedScale != null) {
+        targetScale = savedScale;
+        targetCamX = savedCamX; targetCamY = savedCamY;
+        isSliding = true;
+        savedScale = null;
+    }
+}
 let drawCallCount = 0;  // 💡 draw() 호출 횟수 추적
 let yearlyEventQueue = [];
 let GENERAL_EVENT_DEFINITIONS = [];
 const INITIAL_FAMILY_ASSET_KRW = 10_000_000;
 let familyAssetKrw = INITIAL_FAMILY_ASSET_KRW;
 let lastMonthlyCashflowKrw = 0;
+
+// 플로팅 텍스트 (월급 연출)
+const floatingTexts = [];
 const EVENT_GROUP_OPS = new Set(['and', 'or']);
 const EVENT_LEAF_OPERATORS = new Set(['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in']);
 const EVENT_RESULT_TYPES = new Set(['none', 'disease', 'trait_delta', 'set_job']);
@@ -159,7 +190,21 @@ function settleMonthlyFamilyAsset() {
     let monthlyCashflowKrw = 0;
     for (const person of nodes) {
         if (!isAliveAndValidInGameFamilyMember(person)) continue;
-        monthlyCashflowKrw += getFixedMonthlyIncomeKrw(person) - getFixedMonthlyExpenseKrw(person.age);
+        const income = getFixedMonthlyIncomeKrw(person);
+        const expense = getFixedMonthlyExpenseKrw(person.age);
+        const net = income - expense;
+        monthlyCashflowKrw += net;
+        // 플로팅 텍스트 스폰
+        const netMan = Math.floor(net / 10000);
+        if (netMan !== 0) {
+            floatingTexts.push({
+                person: person,
+                offsetY: 0,
+                text: `${net > 0 ? '+' : ''}${netMan}만`,
+                color: net > 0 ? '#27ae60' : '#e74c3c',
+                alpha: 1
+            });
+        }
     }
     lastMonthlyCashflowKrw = monthlyCashflowKrw;
     familyAssetKrw += monthlyCashflowKrw;
@@ -524,7 +569,7 @@ function openNextQueuedEvent() {
         const container = document.getElementById('choices-container');
         container.innerHTML = '';
 
-        document.getElementById('e-title').innerText = "📘 인생 이벤트";
+        document.getElementById('e-title').innerText = "인생 이벤트";
         document.getElementById('e-desc').innerText = `${person.name}(${person.age}세): ${queued.eventDef.text}`;
 
         const choices = (queued.eventDef.choices || []).slice(0, 4);
@@ -540,6 +585,7 @@ function openNextQueuedEvent() {
         });
 
         isEventActive = true;
+        focusOnPerson(person);
         document.getElementById('event-modal').style.display = 'block';
         return true;
     }
@@ -871,16 +917,17 @@ function startTimers() {
 
 function triggerSuccession(deceasedHead) {
     isEventActive = true;
+    focusOnPerson(deceasedHead);
     const livingChildren = deceasedHead.children.map(id => nodes.find(n => n.id === id)).filter(n => n && n.isAlive);
     if (livingChildren.length === 0) {
-        document.getElementById('e-title').innerText = "🪦 가문의 몰락";
+        document.getElementById('e-title').innerText = "가문의 몰락";
         document.getElementById('e-desc').innerText = "가주가 후계자 없이 사망하여 가문의 대가 끊겼습니다.";
         document.getElementById('choices-container').innerHTML = `<button class="choice-btn" onclick="location.reload()">새로운 가문 창설하기</button>`;
         document.getElementById('event-modal').style.display = 'block'; return;
     }
     const container = document.getElementById('choices-container');
     container.innerHTML = '';
-    document.getElementById('e-title').innerText = "👑 후계자 지명";
+    document.getElementById('e-title').innerText = "후계자 지명";
     document.getElementById('e-desc').innerText = `가주가 사망했습니다. 가문을 이을 다음 가주를 선택하세요.`;
     livingChildren.forEach((child) => {
         const btn = document.createElement('button');
@@ -910,7 +957,8 @@ function triggerMarriage(p) {
     isEventActive = true;
     const container = document.getElementById('choices-container');
     container.innerHTML = '';
-    document.getElementById('e-title').innerText = "💍 혼담 발생";
+    focusOnPerson(p);
+    document.getElementById('e-title').innerText = "혼담 발생";
     document.getElementById('e-desc').innerText = `${p.name}의 배우자를 신중히 선택하세요.`;
     const partnerGender = p.gender === 'M' ? 'F' : 'M';
     for(let i=0; i<3; i++) {
@@ -972,7 +1020,8 @@ function triggerBirth(p) {
     const c_app = inherit('app'), c_per = inherit('per'), c_val = inherit('val'), c_hlt = inherit('hlt');
     const c_visuals = inheritVisuals(p.visuals, partner.visuals, gender);
 
-    document.getElementById('e-title').innerText = "👶 생명 탄생";
+    focusOnPerson(p);
+    document.getElementById('e-title').innerText = "생명 탄생";
     document.getElementById('e-desc').innerHTML = `가문에 <b>${childName}</b>이(가) 태어났습니다!`;
     const container = document.getElementById('choices-container');
     container.innerHTML = `
@@ -1010,6 +1059,11 @@ function updateUI() {
     if (assetElement) {
         assetElement.innerText = `자산: ${formatKoreanMoneyUnits(familyAssetKrw)}`;
     }
+    const totalAssetEl = document.getElementById('total-asset-ui');
+    if (totalAssetEl) {
+        totalAssetEl.innerText = `총 자산: ${formatKoreanMoneyUnits(familyAssetKrw)}`;
+        totalAssetEl.style.color = familyAssetKrw >= 0 ? '#27ae60' : '#e74c3c';
+    }
 }
 // 관리자: 자동선택
 let autoChoiceEnabled = false;
@@ -1030,10 +1084,11 @@ function autoClickChoice() {
 function closeEvent() {
     document.getElementById('event-modal').style.display = 'none';
     isEventActive = false;
+    restoreCamera();
     openNextQueuedEvent();
 }
 function setSpeed(s, btn) { currentSpeed = s; document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); startTimers(); }
-function updateCamera() { if (isSliding) { camX += (targetCamX - camX) * 0.1; camY += (targetCamY - camY) * 0.1; if (Math.abs(targetCamX - camX) < 1) isSliding = false; } }
+function updateCamera() { if (isSliding) { if (targetScale != null) { scale += (targetScale - scale) * 0.1; if (Math.abs(targetScale - scale) < 0.005) { scale = targetScale; targetScale = null; } } if (focusTarget) { targetCamX = (canvas.width / 2) - (focusTarget.x * scale); targetCamY = (canvas.height / 2) - (focusTarget.y * scale); } camX += (targetCamX - camX) * 0.1; camY += (targetCamY - camY) * 0.1; if (Math.abs(targetCamX - camX) < 1 && Math.abs(targetCamY - camY) < 1 && targetScale == null) { isSliding = false; focusTarget = null; } } }
 
 window.addEventListener('mousedown', () => isDragging = true);
 window.addEventListener('mousemove', e => { 
@@ -1086,21 +1141,23 @@ function animate() {
                 let lineWidth = 3;
                 let strokeColor = "#cbd5e0";
                 
-                if (!p1.isAlive) {
+                const eitherHead = p1.isHead || (partner && partner.isHead);
+
+                if (!p1.isAlive && (!partner || !partner.isAlive)) {
                     strokeColor = "rgba(203, 213, 224, 0.2)";
                     lineWidth = 2;
-                } else if (p1.isHead) {
-                    strokeColor = "#d63031";  // 현 가주: 빨강
+                } else if (eitherHead) {
+                    strokeColor = "#d63031";  // 가주 포함: 빨강
                     lineWidth = 4;
-                } else if (p1.isMarried && n.gender === 'M' && nodes.find(nn => nn.id === p1.partner)?.isAlive) {
-                    strokeColor = "#3498db";  // 결혼한 가주: 파랑
+                } else if (p1.isAlive) {
+                    strokeColor = "#3498db";  // 살아있는 부모: 파랑
                     lineWidth = 3.5;
                 }
                 
                 ctx.lineWidth = lineWidth;
                 ctx.strokeStyle = strokeColor;
                 ctx.beginPath();
-                ctx.moveTo(n.x, n.y - n.radius);
+                ctx.moveTo(n.x, n.y - n.radius * 1.3);
                 ctx.bezierCurveTo(n.x, n.y - 180, midX, midY + 180, midX, midY);
                 ctx.stroke();
             }
@@ -1113,14 +1170,30 @@ function animate() {
                 ctx.lineWidth = n.isHead ? 3.5 : 2.5;
                 ctx.strokeStyle = n.isHead ? "#d63031" : "#9b59b6";  // 가주는 빨강, 아니면 보라
                 ctx.beginPath();
-                ctx.moveTo(n.x + n.radius, n.y);
-                ctx.lineTo(p.x - p.radius, p.y);
+                ctx.moveTo(n.x, n.y);
+                ctx.lineTo(p.x, p.y);
                 ctx.stroke();
             }
         }
     });
 
     nodes.forEach(n => n.draw(ctx, scale));
+
+    // 플로팅 텍스트 렌더 + 업데이트
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const ft = floatingTexts[i];
+        ft.offsetY -= 0.8;
+        ft.alpha -= 0.015;
+        if (ft.alpha <= 0) { floatingTexts.splice(i, 1); continue; }
+        ctx.globalAlpha = ft.alpha;
+        ctx.fillStyle = ft.color;
+        ctx.fillText(ft.text, ft.person.x, ft.person.y - 90 + ft.offsetY);
+    }
+    ctx.globalAlpha = 1;
+
     ctx.restore();
     requestAnimationFrame(animate);
 }

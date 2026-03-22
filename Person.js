@@ -37,6 +37,10 @@ const loadedAssetCodes = {
 // 전역 pulse (모든 캐릭터 동기화)
 let globalPulse = 0;
 
+// 왕관 이미지 (pre-load)
+const crownImg = new Image();
+crownImg.src = 'images/crown.png';
+
 // 에셋 타입별 탐색:
 // scanAll=false(기본): Xa → Xb → ... 첫 실패 시 중단 (연속적 파일셋 기대)
 // scanAll=true: a~z 전체 시도 (코드 순서 무관계)
@@ -158,10 +162,9 @@ class PersonNode {
             ctx.translate(Math.round(this.x), Math.round(this.y));
             ctx.scale(s, s);
             
-            if (!this.isAlive || !this.isMain) ctx.globalAlpha = 0.3;
-
-            // 전경: 이미지 그리기
-            ctx.globalAlpha = 1;
+            if (!this.isAlive) {
+                ctx.filter = 'grayscale(1)';
+            }
             
             const dx = Math.round(-imgWidth / 2);
             const dy = Math.round(-imgHeight / 2);
@@ -226,15 +229,48 @@ class PersonNode {
             }
 
             // 왕관
-            if (this.isHead && this.isAlive) {
-                ctx.font = "24px sans-serif";
-                ctx.fillText("👑", 0, -this.radius - 10);
+            if (this.isHead && this.isAlive && crownImg.complete && crownImg.naturalWidth) {
+                const crownScale = imgHeight / 710 * 0.9;
+                const cw = Math.round(crownImg.naturalWidth * crownScale);
+                const ch = Math.round(crownImg.naturalHeight * crownScale);
+                ctx.drawImage(crownImg, -cw / 2, -this.radius - 10 - ch / 2, cw, ch);
+            }
+
+            // 월급/지출 표시 (이미지 상단)
+            if (this.isAlive && this.isMain) {
+                ctx.font = "bold 13px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "bottom";
+                const income = this.jobMonthlyIncomeKrw || 0;
+                const expense = (typeof getFixedMonthlyExpenseKrw === 'function') ? getFixedMonthlyExpenseKrw(this.age) : 0;
+                const net = income - expense;
+                const netText = `${net >= 0 ? '+' : ''}${Math.floor(net / 10000)}만/월`;
+                const tw = ctx.measureText(netText).width;
+                const padX = 8, padY = 5;
+                const bx = -tw / 2 - padX;
+                const by = dy - 14 - 13 - padY;
+                const bw = tw + padX * 2;
+                const bh = 13 + padY * 2;
+                ctx.fillStyle = "#ffffff";
+                ctx.strokeStyle = "#aaaaaa";
+                ctx.lineWidth = 2;
+                if (ctx.roundRect) {
+                    ctx.beginPath();
+                    ctx.roundRect(bx, by, bw, bh, 7);
+                    ctx.fill();
+                    ctx.stroke();
+                } else {
+                    ctx.fillRect(bx, by, bw, bh);
+                    ctx.strokeRect(bx, by, bw, bh);
+                }
+                ctx.fillStyle = net >= 0 ? "#27ae60" : "#e74c3c";
+                ctx.fillText(netText, 0, dy - 14);
             }
 
             // 텍스트: 이름 및 나이 (이미지 하단 기준으로 간격 확보)
-            let startY = Math.round(imgHeight / 2) + 18;
+            let startY = Math.round(imgHeight / 2) + 30;
             ctx.fillStyle = "#2d3436";
-            ctx.font = "bold 15px sans-serif";
+            ctx.font = "bold 18px sans-serif";
             ctx.textAlign = "center";
             let diseaseIcon = this.disease ? " 🤒" : "";
             const jobLabel = this.jobName || (this.careerStage === 'retired' ? '은퇴' : '무직');
@@ -242,7 +278,7 @@ class PersonNode {
             
             // 텍스트: 특성
             startY += 12;
-            ctx.font = "bold 11px sans-serif";
+            ctx.font = "bold 13px sans-serif";
             ctx.textBaseline = "middle";
 
             const traitsList = [
@@ -255,8 +291,7 @@ class PersonNode {
             traitsList.forEach((t, i) => {
                 if (!t.name) return;
                 const text = `[${t.prefix}] ${t.name}`;
-                const textWidth = ctx.measureText(text).width;
-                const boxWidth = textWidth + 16;
+                const boxWidth = 88;     // 고정 너비 (통일)
 
                 // 2×2 배치: 짝수=왼쪽, 홀수=오른쪽
                 const col = i % 2;       // 0: 왼쪽, 1: 오른쪽
@@ -265,7 +300,6 @@ class PersonNode {
                 const rowGap = 26;
                 const colGap = 4;        // 좌우 박스 사이 간격
                 const boxY = startY + row * rowGap;
-                // 왼쪽 열: 오른쪽 정렬, 오른쪽 열: 왼쪽 정렬 (중앙 기준)
                 const boxX = col === 0 ? -(colGap / 2) - boxWidth : (colGap / 2);
 
                 ctx.fillStyle = getTierColor(t.tier);
@@ -276,6 +310,7 @@ class PersonNode {
                 } else {
                     ctx.fillRect(boxX, boxY, boxWidth, boxH);
                 }
+                // 텍스트가 박스 내 수평 중앙에 표시
                 ctx.fillStyle = "#ffffff";
                 ctx.fillText(text, boxX + boxWidth / 2, boxY + boxH / 2);
             });
