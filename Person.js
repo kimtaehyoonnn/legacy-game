@@ -84,6 +84,11 @@ function getTierColor(tier) {
     return '#7f8c8d';
 }
 
+function getNodeTraitText(trait) {
+    if (!trait) return '미정';
+    return trait.name || '미정';
+}
+
 class PersonNode {
     constructor(name, gender, x, y, level, age = 0, parents = [], isHead = false, isMain = true, isSpouse = false) {
         this.id = nextId++; 
@@ -263,15 +268,15 @@ class PersonNode {
 
             const traitsList = [
                 { prefix: '외', ...this.traits.app },
-                { prefix: '성', ...this.traits.per },
-                { prefix: '가', ...this.traits.val },
-                { prefix: '건', ...this.traits.hlt }
+                { prefix: '성', tier: this.traits.per?.tier, name: getNodeTraitText(this.traits.per) },
+                { prefix: '가', tier: this.traits.val?.tier, name: getNodeTraitText(this.traits.val) },
+                { prefix: '건', tier: this.traits.hlt?.tier, name: getNodeTraitText(this.traits.hlt) }
             ];
 
             traitsList.forEach((t, i) => {
                 if (!t.name) return;
                 const text = `[${t.prefix}] ${t.name}`;
-                const boxWidth = 88;     // 고정 너비 (통일)
+                const boxWidth = 130;     // 고정 너비 (통일)
 
                 // 2×2 배치: 짝수=왼쪽, 홀수=오른쪽
                 const col = i % 2;       // 0: 왼쪽, 1: 오른쪽
