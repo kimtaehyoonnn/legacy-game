@@ -74,6 +74,8 @@ function restoreCamera() {
 let yearlyEventQueue = [];
 let GENERAL_EVENT_DEFINITIONS = [];
 const INITIAL_FAMILY_ASSET_KRW = 10_000_000;
+const BIRTH_DECISION_COOLDOWN_MONTHS = 6;
+const BIRTH_SUCCESS_COOLDOWN_MONTHS = 12;
 let familyAssetKrw = INITIAL_FAMILY_ASSET_KRW;
 let lastMonthlyCashflowKrw = 0;
 
@@ -478,7 +480,12 @@ function startTimers() {
                 if (n.age >= 20 && !n.isMarried && Math.random() < 0.1) { triggerMarriage(n); break; }
                 if (n.isMarried && n.children.length < 3 && Math.random() < 0.03) {
                     let wife = n.gender === 'F' ? n : nodeMap.get(n.partner);
-                    if (wife && wife.isAlive && wife.age < wife.menopauseAge) { triggerBirth(n); break; }
+                    const isBirthDecisionCooldown = globalMonths < getBirthDecisionCooldownMonth(n)
+                        || globalMonths < getBirthDecisionCooldownMonth(wife);
+                    if (!isBirthDecisionCooldown && wife && wife.isAlive && wife.age < wife.menopauseAge) {
+                        triggerBirthDecision(n);
+                        break;
+                    }
                 }
             }
         }
@@ -533,19 +540,100 @@ function triggerMarriage(p) {
     document.getElementById('e-title').innerText = "혼담 발생";
     document.getElementById('e-desc').innerText = `${p.name}의 배우자를 신중히 선택하세요.`;
     const partnerGender = p.gender === 'M' ? 'F' : 'M';
+
+    const getBackHairCodeFromFrontHair = (frontHairCode) => {
+        if (!frontHairCode) return null;
+        if (frontHairCode.startsWith('mFH')) return `mBH${frontHairCode.slice(3)}`;
+        if (frontHairCode.startsWith('fFH')) return `fBH${frontHairCode.slice(3)}`;
+        return null;
+    };
+
+    const drawCandidatePreview = (canvasEl, visuals) => {
+        const previewCtx = canvasEl.getContext('2d');
+        if (!previewCtx) return;
+
+        const cssW = 96;
+        const cssH = 132;
+        const dpr = Math.max(1, window.devicePixelRatio || 1);
+        const targetW = Math.round(cssW * dpr);
+        const targetH = Math.round(cssH * dpr);
+
+        if (canvasEl.width !== targetW || canvasEl.height !== targetH) {
+            canvasEl.width = targetW;
+            canvasEl.height = targetH;
+            canvasEl.style.width = `${cssW}px`;
+            canvasEl.style.height = `${cssH}px`;
+        }
+
+        previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        previewCtx.imageSmoothingEnabled = true;
+        previewCtx.imageSmoothingQuality = 'high';
+        previewCtx.clearRect(0, 0, cssW, cssH);
+
+        const imgHeight = Math.round(cssH * 0.92);
+        const imgWidth = Math.round(imgHeight * (512 / 710));
+        const dx = Math.round((cssW - imgWidth) / 2);
+        const dy = Math.round((cssH - imgHeight) / 2 + 2);
+
+        const bhCode = getBackHairCodeFromFrontHair(visuals.frontHair);
+        if (bhCode) {
+            const bhImg = characterAssets.backHair[bhCode];
+            if (bhImg && bhImg.complete && bhImg.naturalWidth) previewCtx.drawImage(bhImg, dx, dy, imgWidth, imgHeight);
+        }
+
+        const shoulderImg = characterAssets.shoulder[visuals.shoulder || 'SA'];
+        if (shoulderImg && shoulderImg.complete && shoulderImg.naturalWidth) previewCtx.drawImage(shoulderImg, dx, dy, imgWidth, imgHeight);
+
+        const clothesImg = characterAssets.clothes[visuals.clothes || 'CA'];
+        if (clothesImg && clothesImg.complete && clothesImg.naturalWidth) previewCtx.drawImage(clothesImg, dx, dy, imgWidth, imgHeight);
+
+        const faceImg = characterAssets.face[visuals.face || 'Fa'];
+        if (faceImg && faceImg.complete && faceImg.naturalWidth) previewCtx.drawImage(faceImg, dx, dy, imgWidth, imgHeight);
+
+        const mouthImg = characterAssets.mouth[visuals.mouth || 'MA'];
+        if (mouthImg && mouthImg.complete && mouthImg.naturalWidth) previewCtx.drawImage(mouthImg, dx, dy, imgWidth, imgHeight);
+
+        const noseImg = characterAssets.nose[visuals.nose || 'NA'];
+        if (noseImg && noseImg.complete && noseImg.naturalWidth) previewCtx.drawImage(noseImg, dx, dy, imgWidth, imgHeight);
+
+        const eyesImg = characterAssets.eyes[visuals.eyes || 'EA'];
+        if (eyesImg && eyesImg.complete && eyesImg.naturalWidth) previewCtx.drawImage(eyesImg, dx, dy, imgWidth, imgHeight);
+
+        const fhImg = characterAssets.frontHair[visuals.frontHair || ''];
+        if (fhImg && fhImg.complete && fhImg.naturalWidth) previewCtx.drawImage(fhImg, dx, dy, imgWidth, imgHeight);
+    };
+
     for(let i=0; i<3; i++) {
         const c_app = getRandomTrait('app'), c_per = getRandomTrait('per'), c_val = getRandomTrait('val'), c_hlt = getRandomTrait('hlt');
         const c_visuals = getRandomVisuals(partnerGender);
         const btn = document.createElement('button');
-        btn.className = 'choice-btn';
-        btn.innerHTML = `
-            <div style="font-weight:bold; margin-bottom:5px;">후보 ${i+1}</div>
+        btn.className = 'choice-btn marriage-choice-btn';
+
+        const layout = document.createElement('div');
+        layout.className = 'marriage-choice-layout';
+
+        const previewWrap = document.createElement('div');
+        previewWrap.className = 'marriage-candidate-preview';
+        const previewCanvas = document.createElement('canvas');
+        previewCanvas.className = 'marriage-candidate-canvas';
+        drawCandidatePreview(previewCanvas, c_visuals);
+        previewWrap.appendChild(previewCanvas);
+
+        const info = document.createElement('div');
+        info.className = 'marriage-choice-info';
+        info.innerHTML = `
+            <div class="marriage-choice-title">후보 ${i + 1}</div>
             <div class="trait-box">
                 <span style="color:${getTierColor(c_app.tier)}"><b>[외모]</b> ${c_app.name}</span><br>
                 <span style="color:${getTierColor(c_per.tier)}"><b>[성격]</b> ${c_per.name}</span><br>
                 <span style="color:${getTierColor(c_val.tier)}"><b>[가치]</b> ${c_val.name}</span><br>
                 <span style="color:${getTierColor(c_hlt.tier)}"><b>[건강]</b> ${c_hlt.name}</span>
             </div>`;
+
+        layout.appendChild(previewWrap);
+        layout.appendChild(info);
+        btn.appendChild(layout);
+
         btn.onclick = () => {
             const partner = new PersonNode(NAMES[p.gender==='M'?'F':'M'][Math.floor(Math.random()*10)], p.gender==='M'?'F':'M', p.x, p.y, p.level, p.age, [], false, p.isMain, true);
             partner.isMarried = true; p.isMarried = true; p.partner = partner.id; partner.partner = p.id;
@@ -616,6 +704,51 @@ function triggerBirth(p) {
         targetCamX = (canvas.width / 2) - (child.targetX * scale); targetCamY = (canvas.height / 2) - (child.targetY * scale); isSliding = true;
         updateUI(); closeEvent();
     };
+    document.getElementById('event-modal').style.display = 'block';
+}
+
+function getBirthDecisionCooldownMonth(person) {
+    if (!person || !Number.isFinite(person.birthDecisionCooldownUntilMonth)) return 0;
+    return Math.max(0, Math.floor(person.birthDecisionCooldownUntilMonth));
+}
+
+function setBirthDecisionCooldown(personA, personB, cooldownMonths = BIRTH_DECISION_COOLDOWN_MONTHS) {
+    const untilMonth = globalMonths + Math.max(1, Math.floor(cooldownMonths));
+    if (personA) personA.birthDecisionCooldownUntilMonth = untilMonth;
+    if (personB) personB.birthDecisionCooldownUntilMonth = untilMonth;
+}
+
+function triggerBirthDecision(p) {
+    const partner = nodeMap.get(p.partner);
+    if (!partner || !partner.isAlive) return;
+
+    isEventActive = true;
+    focusOnPerson(p);
+
+    document.getElementById('e-title').innerText = '출산 결정';
+    document.getElementById('e-desc').innerText = `${p.name} 부부에게 출산 기회가 왔습니다. 지금 출산을 진행할까요?`;
+
+    const container = document.getElementById('choices-container');
+    container.innerHTML = '';
+
+    const yesBtn = document.createElement('button');
+    yesBtn.className = 'choice-btn';
+    yesBtn.textContent = '출산을 진행한다';
+    yesBtn.onclick = () => {
+        setBirthDecisionCooldown(p, partner, BIRTH_SUCCESS_COOLDOWN_MONTHS);
+        triggerBirth(p);
+    };
+
+    const noBtn = document.createElement('button');
+    noBtn.className = 'choice-btn';
+    noBtn.textContent = '이번에는 출산하지 않는다';
+    noBtn.onclick = () => {
+        setBirthDecisionCooldown(p, partner);
+        closeEvent();
+    };
+
+    container.appendChild(yesBtn);
+    container.appendChild(noBtn);
     document.getElementById('event-modal').style.display = 'block';
 }
 
