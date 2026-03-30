@@ -221,6 +221,7 @@ function normalizeEventDefinitions(rawDefs) {
             choices: eventDef.choices.map(choice => ({
                 id: choice.id,
                 text: choice.text,
+                resultText: choice.resultText || null,
                 result: { ...choice.result }
             }))
         });

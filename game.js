@@ -171,7 +171,17 @@ function openNextQueuedEvent() {
             btn.textContent = choice.text;
             btn.onclick = () => {
                 applyEventChoice(person, queued.eventDef, choice.id, buildGameContext());
-                closeEvent();
+                if (choice.resultText) {
+                    container.innerHTML = `<p style="color:#d63031;font-weight:bold;font-size:15px;text-align:center;margin:14px 4px;line-height:1.6;">${choice.resultText}</p>`;
+                    const confirmBtn = document.createElement('button');
+                    confirmBtn.className = 'choice-btn';
+                    confirmBtn.style.textAlign = 'center';
+                    confirmBtn.textContent = '확인';
+                    confirmBtn.onclick = () => closeEvent();
+                    container.appendChild(confirmBtn);
+                } else {
+                    closeEvent();
+                }
             };
             container.appendChild(btn);
         });

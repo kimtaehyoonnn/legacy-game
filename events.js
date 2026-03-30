@@ -44,42 +44,27 @@ const GENERAL_EVENTS = [
         code: 'mart_beg_item',
         text: '마트에 가서 물건을 사달라고 조른다.',
         probability: 0.95,
-        condition: {
-            op: 'and',
-            conditions: [
-                { target: 'person', field: 'age', operator: 'eq', value: 5 },
-                { target: 'game', field: 'year', operator: 'gte', value: 0 }
-            ]
-        },
+        condition: { target: 'person', field: 'age', operator: 'eq', value: 5 },
         choices: [
-            { id: 'a', text: '울면서 끝까지 조른다.', result: { type: 'trait_delta', trait: 'per', delta: -1 } },
-            { id: 'b', text: '가격표를 보고 포기한다.', result: { type: 'trait_delta', trait: 'val', delta: 1 } },
-            { id: 'c', text: '작은 간식으로 타협한다.', result: { type: 'none' } },
-            { id: 'd', text: '아무 말 없이 따라간다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } }
+            { id: 'strict', text: '엄하게 혼낸다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } },
+            { id: 'spoil',  text: '아이의 요구를 들어준다.', result: { type: 'trait_delta', trait: 'val', delta: -1 } }
         ]
     },
     {
         code: 'class_urgent_pooping',
-        text: '초등학교 수업 시간에 갑자기 똥이 마렵다.',
+        text: '초등학교 수업 시간에 갑자기 오줌이 마렵다.',
         probability: 0.8,
-        condition: {
-            op: 'and',
-            conditions: [
-                { target: 'person', field: 'age', operator: 'eq', value: 8 },
-                { target: 'person', field: 'isMarried', operator: 'eq', value: false }
-            ]
-        },
+        condition: { target: 'person', field: 'age', operator: 'eq', value: 8 },
         choices: [
-            { id: 'a', text: '손을 들고 화장실을 요청한다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } },
-            { id: 'b', text: '끝까지 참아본다.', result: { type: 'disease', disease: '몸살' } },
-            { id: 'c', text: '몰래 나간다.', result: { type: 'trait_delta', trait: 'val', delta: -1 } },
-            { id: 'd', text: '친구에게 도움을 요청한다.', result: { type: 'none' } }
+            { id: 'wet',  text: '바지에 지린다.',        resultText: '반 친구들이 모두 보고 말았습니다. 대참사가 발생했습니다.',    result: { type: 'trait_delta', trait: 'per', delta: -2 } },
+            { id: 'hold', text: '용기를 내서 참아본다.', resultText: '간신히 참아냈습니다.',                                            result: { type: 'none' } },
+            { id: 'drip', text: '조금씩 내보내며 버틴다.', resultText: '조절에 실패했습니다. 대참사가 발생했습니다.',                  result: { type: 'trait_delta', trait: 'per', delta: -1 } }
         ]
     },
     {
         code: 'first_crush',
         text: '짝꿍이 마음에 든다.',
-        probability: 0.7,
+        probability: 0.9,
         condition: {
             op: 'and',
             conditions: [
@@ -88,40 +73,31 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '고백 편지를 쓴다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } },
-            { id: 'b', text: '몰래 지켜보기만 한다.', result: { type: 'trait_delta', trait: 'per', delta: -1 } },
-            { id: 'c', text: '친구로 지내기로 한다.', result: { type: 'none' } },
-            { id: 'd', text: '공부에 집중하기로 한다.', result: { type: 'trait_delta', trait: 'val', delta: 1 } }
+            { id: 'confess',  text: '솔직하게 마음을 고백한다.', result: { type: 'none' } },
+            { id: 'tsundere', text: '맘에 들지만 싫어하는 척 한다.', result: { type: 'none' } }
         ]
     },
     {
         code: 'middle_school_chuunibyou',
-        text: '사춘기(중2병)이 생긴다.',
-        probability: 0.9,
+        text: '사춘기(중2병)이 생긴다. 어떻게 할까?',
+        probability: 0.95,
         condition: { target: 'person', field: 'age', operator: 'eq', value: 15 },
         choices: [
-            { id: 'a', text: '혼자만의 세계에 빠진다.', result: { type: 'trait_delta', trait: 'per', delta: -1 } },
-            { id: 'b', text: '운동으로 에너지를 푼다.', result: { type: 'trait_delta', trait: 'hlt', delta: 1 } },
-            { id: 'c', text: '가족과 대화를 늘린다.', result: { type: 'trait_delta', trait: 'val', delta: 1 } },
-            { id: 'd', text: '특별한 변화 없이 지나간다.', result: { type: 'none' } }
+            { id: 'obey',    text: '부모님께 순종한다.',           resultText: '당신은 착한 아이입니다.',                                result: { type: 'trait_delta', trait: 'per', delta: 1 } },
+            { id: 'dyehair', text: '반항하기 위해 머리를 물들인다.', resultText: '염색에 실패해 학교에서 놀림을 받습니다. 매력이 떨어집니다.', result: { type: 'trait_delta', trait: 'app', delta: -2 } },
+            { id: 'runaway', text: '가출한다.',                    result: { type: 'trait_delta', trait: 'hlt', delta: -1 } }
         ]
     },
     {
         code: 'prepare_college_exam',
-        text: '대입을 준비한다.',
-        probability: 0.92,
-        condition: {
-            op: 'and',
-            conditions: [
-                { target: 'person', field: 'age', operator: 'eq', value: 19 },
-                { target: 'game', field: 'alivePopulation', operator: 'gte', value: 1 }
-            ]
-        },
+        text: '19살, 대입과 진로를 선택해야 할 시간이다.',
+        probability: 0.95,
+        condition: { target: 'person', field: 'age', operator: 'eq', value: 19 },
         choices: [
-            { id: 'a', text: '입시 학원을 등록한다.', result: { type: 'trait_delta', trait: 'val', delta: 1 } },
-            { id: 'b', text: '독학으로 준비한다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } },
-            { id: 'c', text: '진로를 다시 탐색한다.', result: { type: 'none' } },
-            { id: 'd', text: '스트레스로 잠을 줄인다.', result: { type: 'disease', disease: '감기' } }
+            { id: 'elite',  text: '명문 대학교로 진학한다.', resultText: '명문 대학교에 입학했습니다.',               result: { type: 'set_job', jobCode: 'student' } },
+            { id: 'normal', text: '일반 대학교로 진학한다.', resultText: '대학교에 입학했습니다.',                   result: { type: 'set_job', jobCode: 'student' } },
+            { id: 'work',   text: '취직에 나선다.',           resultText: '좋은 직장을 얻길 바랍니다!',             result: { type: 'none' } },
+            { id: 'neet',   text: '아직은 백수가 좋아.',       resultText: '당신은 불효자의 길을 걷습니다!',         result: { type: 'trait_delta', trait: 'val', delta: -2 } }
         ]
     },
     {
@@ -398,6 +374,137 @@ const GENERAL_EVENTS = [
             { id: 'b', text: '지나가듯 보고 웃는다.', result: { type: 'none' } },
             { id: 'c', text: '충동구매 후 후회한다.', result: { type: 'trait_delta', trait: 'val', delta: -1 } },
             { id: 'd', text: '옷보다 건강부터 챙긴다.', result: { type: 'disease', disease: null } }
+        ]
+    },
+
+    // ─── 11살 짝꿍 고백 결과 (12살 때 트리거) ───
+    {
+        code: 'first_crush_confess_good',
+        text: '두근두근... 용기 있는 고백에 짝꿍이 환하게 웃습니다.',
+        probability: 1.0,
+        condition: {
+            op: 'and',
+            conditions: [
+                { target: 'person', field: 'age', operator: 'eq', value: 12 },
+                { target: 'person', field: 'eventState.choiceByCode.first_crush', operator: 'eq', value: 'confess' },
+                { target: 'person', field: 'traits.app.tier', operator: 'in', value: ['SSR', 'SR'] }
+            ]
+        },
+        choices: [
+            { id: 'ok', text: '짝꿍과 연인이 되었습니다!', resultText: '짝꿍과 연인이 되었습니다! 첫사랑이 이루어지는 순간입니다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } }
+        ]
+    },
+    {
+        code: 'first_crush_confess_bad',
+        text: '짝꿍이 당신을 물끄러미 바라보더니... 고개를 젓습니다.',
+        probability: 1.0,
+        condition: {
+            op: 'and',
+            conditions: [
+                { target: 'person', field: 'age', operator: 'eq', value: 12 },
+                { target: 'person', field: 'eventState.choiceByCode.first_crush', operator: 'eq', value: 'confess' },
+                { target: 'person', field: 'traits.app.tier', operator: 'not_in', value: ['SSR', 'SR'] }
+            ]
+        },
+        choices: [
+            { id: 'ok', text: '짝꿍이 당신을 역겨워합니다.', resultText: '짝꿍이 당신을 역겨워합니다. 거절당했습니다.', result: { type: 'trait_delta', trait: 'per', delta: -1 } }
+        ]
+    },
+    {
+        code: 'first_crush_tsundere_good',
+        text: '싫어하는 척했지만... 짝꿍이 먼저 말을 걸어옵니다.',
+        probability: 1.0,
+        condition: {
+            op: 'and',
+            conditions: [
+                { target: 'person', field: 'age', operator: 'eq', value: 12 },
+                { target: 'person', field: 'eventState.choiceByCode.first_crush', operator: 'eq', value: 'tsundere' },
+                { target: 'person', field: 'traits.app.tier', operator: 'in', value: ['SSR', 'SR'] }
+            ]
+        },
+        choices: [
+            { id: 'ok', text: '짝꿍이 당신을 마음에 들어합니다.', resultText: '짝꿍이 당신을 마음에 들어합니다. 설레는 봄날입니다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } }
+        ]
+    },
+    {
+        code: 'first_crush_tsundere_bad',
+        text: '싫다는 말을 그대로 믿었는지, 짝꿍은 당신을 완전히 무시합니다.',
+        probability: 1.0,
+        condition: {
+            op: 'and',
+            conditions: [
+                { target: 'person', field: 'age', operator: 'eq', value: 12 },
+                { target: 'person', field: 'eventState.choiceByCode.first_crush', operator: 'eq', value: 'tsundere' },
+                { target: 'person', field: 'traits.app.tier', operator: 'not_in', value: ['SSR', 'SR'] }
+            ]
+        },
+        choices: [
+            { id: 'chaos', text: '그녀의 관심을 끌기 위해 소란을 피운다.', resultText: '학폭위원회에 소집되었습니다. 큰 사고를 쳤습니다.', result: { type: 'trait_delta', trait: 'val', delta: -2 } },
+            { id: 'quiet', text: '그저 조용히 있는다.',                    resultText: '누구에게나 그런 날은 있는 법이죠.',              result: { type: 'none' } }
+        ]
+    },
+
+    // ─── 15살 가출 후 위기 (16살 때 트리거) ───
+    {
+        code: 'runaway_danger_16',
+        text: '길거리를 떠돌던 중 수상한 어른이 집에 가자고 합니다...',
+        probability: 1.0,
+        condition: {
+            op: 'and',
+            conditions: [
+                { target: 'person', field: 'age', operator: 'eq', value: 16 },
+                { target: 'person', field: 'eventState.choiceByCode.middle_school_chuunibyou', operator: 'eq', value: 'runaway' }
+            ]
+        },
+        choices: [
+            { id: 'follow',   text: '따라간다.',                resultText: '그저 끔찍한 결과만이 기다리고 있었을 뿐입니다.\n당신은 사망했습니다.', result: { type: 'disease', disease: '혼절' } },
+            { id: 'reject',   text: '그건 안돼!! 집으로 돌아간다.', resultText: '당신은 방황 끝에 집에 무사히 도착했습니다.\n지능 +2, 건강 -1', result: { type: 'trait_delta', trait: 'val', delta: 2 } },
+            { id: 'gangster', text: '나쁜 패거리와 어울린다.',   resultText: '친구들이 집에는 돌아가라고 하네요.\n지능 -1, 매력 +2',             result: { type: 'trait_delta', trait: 'val', delta: -1 } }
+        ]
+    },
+
+    // ─── 17살 장기자랑 ───
+    {
+        code: 'talent_show_17',
+        text: '학교에서 장기자랑이 열린다.',
+        probability: 0.9,
+        condition: { target: 'person', field: 'age', operator: 'eq', value: 17 },
+        choices: [
+            { id: 'perform',  text: '나의 매력을 보여줄 때가 온 것 같다.', result: { type: 'none' } },
+            { id: 'peaceful', text: '평범한게 좋은거야.',                   resultText: '당신은 평온한 일상이 어울려보이네요.',       result: { type: 'none' } },
+            { id: 'boo',      text: '다른 친구들의 공연을 보며 야유한다.',  resultText: '모두가 당신에게 돌을 던집니다. 건강 -1, 매력 -5', result: { type: 'trait_delta', trait: 'per', delta: -2 } }
+        ]
+    },
+    {
+        code: 'talent_show_result_good',
+        text: '무대에 서는 순간 모두의 시선이 집중됩니다.',
+        probability: 1.0,
+        condition: {
+            op: 'and',
+            conditions: [
+                { target: 'person', field: 'age', operator: 'eq', value: 18 },
+                { target: 'person', field: 'eventState.choiceByCode.talent_show_17', operator: 'eq', value: 'perform' },
+                { target: 'person', field: 'traits.app.tier', operator: 'in', value: ['SSR', 'SR'] }
+            ]
+        },
+        choices: [
+            { id: 'ok', text: '모두의 이목을 끌었습니다! 당신은 인기인!', resultText: '모두의 이목을 끌었습니다! 당신은 인기인!', result: { type: 'trait_delta', trait: 'app', delta: 1 } }
+        ]
+    },
+    {
+        code: 'talent_show_result_bad',
+        text: '무대 위의 당신... 분위기가 몹시 어색합니다.',
+        probability: 1.0,
+        condition: {
+            op: 'and',
+            conditions: [
+                { target: 'person', field: 'age', operator: 'eq', value: 18 },
+                { target: 'person', field: 'eventState.choiceByCode.talent_show_17', operator: 'eq', value: 'perform' },
+                { target: 'person', field: 'traits.app.tier', operator: 'not_in', value: ['SSR', 'SR'] }
+            ]
+        },
+        choices: [
+            { id: 'ok', text: '당신의 흑역사가 인터넷에 영원히 박제되었습니다.', resultText: '당신의 흑역사가 인터넷에 영원히 박제되었습니다.', result: { type: 'trait_delta', trait: 'per', delta: -1 } }
         ]
     }
 ];
