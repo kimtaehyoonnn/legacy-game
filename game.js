@@ -215,7 +215,21 @@ function openNextQueuedEvent() {
                     isUserChoice: true,
                     actionSeq: traitUserActionSeq
                 });
-                closeEvent();
+
+                const resultText = choice.resultText || getResultDescription(choice.result);
+                document.getElementById('e-desc').innerText = resultText;
+
+                const cont = document.getElementById('choices-container');
+                cont.innerHTML = '';
+                const confirmBtn = document.createElement('button');
+                confirmBtn.className = 'choice-btn';
+                confirmBtn.textContent = '확인';
+                confirmBtn.onclick = () => closeEvent();
+                cont.appendChild(confirmBtn);
+
+                if (autoChoiceEnabled) {
+                    setTimeout(closeEvent, 150);
+                }
             };
             container.appendChild(btn);
         });
@@ -714,6 +728,32 @@ function autoClickChoice() {
     if (!btns.length) return;
     // 랜덤 선택 (첫 번째는 항상 같아서 랜덤으로)
     btns[Math.floor(Math.random() * btns.length)].click();
+}
+
+function getResultDescription(result) {
+    if (!result) return '';
+    switch (result.type) {
+        case 'none': return '특별한 변화는 없었다.';
+        case 'disease': return result.disease ? `${result.disease}에 걸렸다.` : '몸이 아프게 됐다.';
+        case 'set_job': {
+            const jobDef = JOB_DEFINITIONS[result.jobCode];
+            const jobName = jobDef ? jobDef.name : result.jobCode;
+            return `직업: ${jobName}`;
+        }
+        case 'trait_delta': {
+            try {
+                const idx = DOMAIN_TRAIT_INDEX[result.domain];
+                const attrMeta = idx && idx.attributeByKey ? idx.attributeByKey[result.attribute] : null;
+                const typeMeta = attrMeta && attrMeta.typeByKey ? attrMeta.typeByKey[result.traitType] : null;
+                const sign = result.delta > 0 ? '+' : '';
+                const label = typeMeta ? typeMeta.typeLabel : result.traitType;
+                return `[${label}] 성향 ${sign}${result.delta}`;
+            } catch (e) {
+                return '성향이 변했다.';
+            }
+        }
+        default: return '';
+    }
 }
 
 function closeEvent() {
