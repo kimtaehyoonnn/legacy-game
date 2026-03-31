@@ -20,7 +20,6 @@
             <button class="speed-btn" onclick="setSpeed(50, this)">x50</button>
         </div>
         <button id="auto-choice-btn" onclick="toggleAutoChoice()" style="margin-top:6px; width:100%; padding:5px 0; border:none; border-radius:6px; background:#636e72; color:#fff; font-weight:bold; cursor:pointer; font-size:12px;">🤖 자동선택: OFF</button>
-        <button id="admin-toggle-btn" onclick="toggleAdminPanel()" style="margin-top:4px; width:100%; padding:5px 0; border:none; border-radius:6px; background:#2d3436; color:#fff; font-weight:bold; cursor:pointer; font-size:12px;">🔧 관리자</button>
         <div class="volume-control">
             <button id="mute-btn" onclick="toggleMute()">🔊</button>
             <input id="volume-slider" type="range" min="0" max="100" value="40" oninput="setVolume(this.value)">
@@ -42,57 +41,12 @@
 
     <audio id="bgm-main" src="sounds/Main%20bgm(Ghibli%20Station%20-%20The%20Mini%20Vandals).mp3" loop></audio>
 
-    <!-- 관리자 패널 -->
-    <div id="admin-panel" style="display:none;">
-        <div class="admin-header">
-            <span>🔧 관리자 메뉴</span>
-            <button onclick="toggleAdminPanel()" class="admin-close">✕</button>
-        </div>
-        <div class="admin-section">
-            <div class="admin-label">성별</div>
-            <div class="admin-row">
-                <button class="admin-opt active" data-key="gender" data-val="F" onclick="adminSelect(this)">여</button>
-                <button class="admin-opt" data-key="gender" data-val="M" onclick="adminSelect(this)">남</button>
-            </div>
-        </div>
-        <div class="admin-section">
-            <div class="admin-label">얼굴 (face)</div>
-            <div class="admin-row" id="admin-face"></div>
-        </div>
-        <div class="admin-section">
-            <div class="admin-label">눈 (eyes)</div>
-            <div class="admin-row" id="admin-eyes"></div>
-        </div>
-        <div class="admin-section">
-            <div class="admin-label">코 (nose)</div>
-            <div class="admin-row" id="admin-nose"></div>
-        </div>
-        <div class="admin-section">
-            <div class="admin-label">입 (mouth)</div>
-            <div class="admin-row" id="admin-mouth"></div>
-        </div>
-        <div class="admin-section">
-            <div class="admin-label">앞머리 (frontHair)</div>
-            <div class="admin-row" id="admin-frontHair"></div>
-        </div>
-        <div class="admin-section">
-            <div class="admin-label">옷 (clothes)</div>
-            <div class="admin-row" id="admin-clothes"></div>
-        </div>
-        <div class="admin-section">
-            <div class="admin-label">어깨 (shoulder)</div>
-            <div class="admin-row" id="admin-shoulder"></div>
-        </div>
-        <div id="admin-result" style="display:none;"></div>
-        <button class="admin-spawn-btn" onclick="adminSpawn()">🎮 캐릭터 소환</button>
-    </div>
-
-    <script src="Person.js?v=35"></script>
-    <script src="events.js?v=3"></script>
+    <script src="Person.js?v=36"></script>
+    <script src="events.js?v=4"></script>
     <script src="jobDefinitions.js?v=1"></script>
-    <script src="traitsData.js?v=1"></script>
+    <script src="traitsData.js?v=2"></script>
     <script src="financeSystem.js?v=1"></script>
-    <script src="eventEngine.js?v=1"></script>
-    <script src="game.js?v=31"></script>
+    <script src="eventEngine.js?v=2"></script>
+    <script src="game.js?v=32"></script>
 </body>
 </html>

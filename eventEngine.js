@@ -8,20 +8,12 @@ const EVENT_RESULT_HANDLERS = {
         if (!person || !Object.prototype.hasOwnProperty.call(result, 'disease')) return;
         person.disease = result.disease;
     },
-    trait_delta: (result, person) => {
-        if (!person || !person.traits) return;
-        const traitPool = TRAITS_DATA[result.trait];
-        if (!Array.isArray(traitPool) || traitPool.length === 0) return;
-
-        const normalizedDelta = Math.max(-2, Math.min(2, Math.trunc(result.delta)));
-        if (normalizedDelta === 0) return;
-
-        const currentTrait = person.traits[result.trait];
-        let currentIndex = traitPool.findIndex(t => t.name === currentTrait?.name && t.tier === currentTrait?.tier);
-        if (currentIndex < 0) currentIndex = Math.floor(traitPool.length / 2);
-
-        const nextIndex = Math.max(0, Math.min(traitPool.length - 1, currentIndex + normalizedDelta));
-        person.traits[result.trait] = traitPool[nextIndex];
+    trait_delta: (result, person, gameCtx) => {
+        if (!person || !person.traits || typeof applyDomainTraitDelta !== 'function') return;
+        applyDomainTraitDelta(person, result, {
+            isUserChoice: !!gameCtx?.isUserChoice,
+            actionSeq: Number.isFinite(gameCtx?.actionSeq) ? gameCtx.actionSeq : null
+        });
     },
     set_job: (result, person) => {
         if (!person || typeof result.jobCode !== 'string') return;
@@ -98,13 +90,10 @@ function validateChoiceResult(result, path, errors) {
     }
 
     if (result.type === 'trait_delta') {
-        if (!Object.prototype.hasOwnProperty.call(TRAITS_DATA, result.trait)) {
-            errors.push(`${path}.trait: '${result.trait}'는 지원되지 않는 trait입니다.`);
-        }
-        if (typeof result.delta !== 'number' || !Number.isFinite(result.delta)) {
-            errors.push(`${path}.delta: 숫자여야 합니다.`);
-        } else if (result.delta < -2 || result.delta > 2) {
-            errors.push(`${path}.delta: -2 ~ 2 범위여야 합니다.`);
+        if (Object.prototype.hasOwnProperty.call(result, 'delta')) {
+            if (typeof result.delta !== 'number' || !Number.isFinite(result.delta)) {
+                errors.push(`${path}.delta: 숫자여야 합니다.`);
+            }
         }
     }
 
@@ -409,17 +398,28 @@ function runEventEngineSelfTests() {
         jobAssignedMonth: null,
         traits: {
             app: TRAITS_DATA.app[0],
-            per: TRAITS_DATA.per[2],
-            val: TRAITS_DATA.val[2],
-            hlt: TRAITS_DATA.hlt[2]
+            per: createRandomDomainTrait('per'),
+            val: createRandomDomainTrait('val'),
+            hlt: createRandomDomainTrait('hlt')
         },
         disease: null
     };
     applyEventResult({ type: 'disease', disease: '감기' }, resultTestPerson, gameCtx);
-    applyEventResult({ type: 'trait_delta', trait: 'per', delta: 1 }, resultTestPerson, gameCtx);
+    const perBefore = resultTestPerson.traits.per.scores.interpersonal.active;
+    applyEventResult({
+        type: 'trait_delta',
+        domain: 'per',
+        attribute: 'interpersonal',
+        traitType: 'active',
+        delta: 1
+    }, resultTestPerson, {
+        ...gameCtx,
+        isUserChoice: true,
+        actionSeq: 1
+    });
     applyEventResult({ type: 'set_job', jobCode: 'housekeeper' }, resultTestPerson, gameCtx);
     const resultHandlersPassed = resultTestPerson.disease === '감기'
-        && !!resultTestPerson.traits.per
+        && resultTestPerson.traits.per.scores.interpersonal.active === perBefore + 1
         && resultTestPerson.jobCode === 'housekeeper'
         && resultTestPerson.careerStage === 'selected';
 

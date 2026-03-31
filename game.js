@@ -78,9 +78,48 @@ const BIRTH_DECISION_COOLDOWN_MONTHS = 6;
 const BIRTH_SUCCESS_COOLDOWN_MONTHS = 12;
 let familyAssetKrw = INITIAL_FAMILY_ASSET_KRW;
 let lastMonthlyCashflowKrw = 0;
+let traitUserActionSeq = 0;
 
 // 플로팅 텍스트 (월급 연출)
 const floatingTexts = [];
+
+function getDomainTraitDisplayText(domainKey, trait, showRepresentative = true) {
+    if (!trait) return '미정';
+    const baseName = trait.name || '미정';
+    if (!showRepresentative || typeof getDomainTraitRepresentativeSummary !== 'function') {
+        return baseName;
+    }
+    const reps = getDomainTraitRepresentativeSummary(domainKey, trait, false);
+    return reps ? `${baseName} (${reps})` : baseName;
+}
+
+function buildTraitsBlockHtml(traits, options = {}) {
+    const valueLabel = options.valueLabel || '가치관';
+    const showRepresentative = options.showRepresentative !== false;
+    const appTrait = traits?.app || { tier: 'N', name: '평범한외모' };
+    const perTrait = traits?.per || { tier: 'N', name: '미정' };
+    const valTrait = traits?.val || { tier: 'N', name: '미정' };
+    const hltTrait = traits?.hlt || { tier: 'N', name: '미정' };
+
+    return `
+        <span style="color:${getTierColor(appTrait.tier)}"><b>[외모]</b> ${appTrait.name}</span><br>
+        <span style="color:${getTierColor(perTrait.tier)}"><b>[성격]</b> ${getDomainTraitDisplayText('per', perTrait, showRepresentative)}</span><br>
+        <span style="color:${getTierColor(valTrait.tier)}"><b>[${valueLabel}]</b> ${getDomainTraitDisplayText('val', valTrait, showRepresentative)}</span><br>
+        <span style="color:${getTierColor(hltTrait.tier)}"><b>[건강]</b> ${getDomainTraitDisplayText('hlt', hltTrait, showRepresentative)}</span>
+    `;
+}
+
+function createRandomTraitSet() {
+    const coreTraits = (typeof createRandomCoreTraits === 'function')
+        ? createRandomCoreTraits()
+        : { per: null, val: null, hlt: null };
+    return {
+        app: getRandomTrait('app'),
+        per: coreTraits.per,
+        val: coreTraits.val,
+        hlt: coreTraits.hlt
+    };
+}
 
 function setPersonJob(person, jobCode, assignedMonth = globalMonths) {
     if (!person) return;
@@ -170,18 +209,13 @@ function openNextQueuedEvent() {
             btn.className = 'choice-btn';
             btn.textContent = choice.text;
             btn.onclick = () => {
-                applyEventChoice(person, queued.eventDef, choice.id, buildGameContext());
-                if (choice.resultText) {
-                    container.innerHTML = `<p style="color:#d63031;font-weight:bold;font-size:15px;text-align:center;margin:14px 4px;line-height:1.6;">${choice.resultText}</p>`;
-                    const confirmBtn = document.createElement('button');
-                    confirmBtn.className = 'choice-btn';
-                    confirmBtn.style.textAlign = 'center';
-                    confirmBtn.textContent = '확인';
-                    confirmBtn.onclick = () => closeEvent();
-                    container.appendChild(confirmBtn);
-                } else {
-                    closeEvent();
-                }
+                traitUserActionSeq += 1;
+                applyEventChoice(person, queued.eventDef, choice.id, {
+                    ...buildGameContext(),
+                    isUserChoice: true,
+                    actionSeq: traitUserActionSeq
+                });
+                closeEvent();
             };
             container.appendChild(btn);
         });
@@ -272,6 +306,7 @@ function initGame() {
     nodes = []; nodeMap.clear(); nextId = 0; globalMonths = 0;
     familyAssetKrw = INITIAL_FAMILY_ASSET_KRW;
     lastMonthlyCashflowKrw = 0;
+    traitUserActionSeq = 0;
     yearlyEventQueue = [];
     camX = canvas.width / 2; camY = 150;
     isEventActive = false; // 이벤트 잠금 초기화
@@ -283,9 +318,8 @@ function initGame() {
     const founderX = 0;
     const founderY = 0;
     const founder = new PersonNode("1대 가주", 'M', founderX, founderY, 0, 19, [], true, true, false); 
-    founder.traits = { app: getRandomTrait('app'), per: getRandomTrait('per'), val: getRandomTrait('val'), hlt: getRandomTrait('hlt') };
+    founder.traits = createRandomTraitSet();
     founder.visuals = getRandomVisuals('M');
-    applyVisualTraitRules(founder.visuals, founder.traits);
     nodes.push(founder);
     nodeMap.set(founder.id, founder);
     
@@ -299,118 +333,8 @@ function initGame() {
     else console.error("[ERROR] Speed button not found!");
 }
 
-// 🔧 관리자 패널
-let adminPanelOpen = false;
-const adminState = { gender: 'F', face: null, eyes: null, nose: null, mouth: null, frontHair: null, clothes: null, shoulder: null };
-
-function toggleAdminPanel() {
-    adminPanelOpen = !adminPanelOpen;
-    const panel = document.getElementById('admin-panel');
-    panel.style.display = adminPanelOpen ? 'block' : 'none';
-    if (adminPanelOpen) populateAdminOptions();
-}
-
-function populateAdminOptions() {
-    const faceRow = document.getElementById('admin-face');
-    const eyesRow = document.getElementById('admin-eyes');
-    const noseRow = document.getElementById('admin-nose');
-    const mouthRow = document.getElementById('admin-mouth');
-    const fhRow = document.getElementById('admin-frontHair');
-    const clothesRow = document.getElementById('admin-clothes');
-    const shoulderRow = document.getElementById('admin-shoulder');
-
-    function fillRow(container, codes, key) {
-        container.innerHTML = '';
-        codes.forEach(code => {
-            const btn = document.createElement('button');
-            btn.className = 'admin-opt' + (adminState[key] === code ? ' active' : '');
-            btn.dataset.key = key;
-            btn.dataset.val = code;
-            btn.textContent = code;
-            btn.onclick = function() { adminSelect(this); };
-            container.appendChild(btn);
-        });
-    }
-
-    fillRow(faceRow, FACE_CONFIG.types, 'face');
-    fillRow(eyesRow, loadedAssetCodes.eyes, 'eyes');
-    fillRow(noseRow, loadedAssetCodes.nose, 'nose');
-    fillRow(mouthRow, loadedAssetCodes.mouth, 'mouth');
-    // 앞머리: 성별에 따라 풀 변경
-    const fhPool = adminState.gender === 'M' ? loadedAssetCodes.mFrontHair : loadedAssetCodes.fFrontHair;
-    fillRow(fhRow, fhPool, 'frontHair');
-    fillRow(clothesRow, loadedAssetCodes.clothes, 'clothes');
-    fillRow(shoulderRow, loadedAssetCodes.shoulder, 'shoulder');
-}
-
-function adminSelect(btn) {
-    const key = btn.dataset.key;
-    const val = btn.dataset.val;
-
-    if (key === 'gender') {
-        adminState.gender = val;
-        adminState.frontHair = null; // 성별 바뀌면 앞머리 초기화
-        btn.parentElement.querySelectorAll('.admin-opt').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        populateAdminOptions();
-        return;
-    }
-
-    // 같은 값 다시 누르면 해제 (랜덤으로 돌아감)
-    if (adminState[key] === val) {
-        adminState[key] = null;
-        btn.classList.remove('active');
-    } else {
-        adminState[key] = val;
-        btn.parentElement.querySelectorAll('.admin-opt').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-    }
-}
-
-function adminSpawn() {
-    nodes.length = 0; nodeMap.clear(); nextId = 1; globalMonths = 0;
-    if (monthTimer) { clearInterval(monthTimer); monthTimer = null; }
-
-    const gender = adminState.gender;
-    const founder = new PersonNode("디버그 가주", gender, 0, 0, 0, 19, [], true, true, false);
-    founder.traits = { app: getRandomTrait('app'), per: getRandomTrait('per'), val: getRandomTrait('val'), hlt: getRandomTrait('hlt') };
-
-    // 랜덤 비주얼 생성 후 선택된 항목만 덮어쓰기
-    const baseVisuals = getRandomVisuals(gender);
-    for (const key of ['face', 'eyes', 'nose', 'mouth', 'frontHair', 'clothes', 'shoulder']) {
-        if (adminState[key]) baseVisuals[key] = adminState[key];
-    }
-    founder.visuals = baseVisuals;
-    applyVisualTraitRules(founder.visuals, founder.traits);
-
-    nodes.push(founder); nodeMap.set(founder.id, founder);
-    updateLayout(); updateUI();
-    startTimers();
-
-    // 카메라 포커스
-    targetCamX = canvas.width / 2;
-    targetCamY = canvas.height / 2;
-
-    // 결과 표시
-    const resultDiv = document.getElementById('admin-result');
-    resultDiv.style.display = 'block';
-    const traitLines = ['app', 'per', 'val', 'hlt'].map(cat => {
-        const t = founder.traits[cat];
-        const color = getTierColor(t.tier);
-        return `<span style="color:${color}">[${t.tier}] ${t.name}</span>`;
-    }).join('<br>');
-    resultDiv.innerHTML = `<b>✅ 소환 완료</b><br>${traitLines}`;
-}
-
 function handleDisease(n) {
-    const hltTier = n.traits.hlt.tier;
-    const getRates = (tier) => {
-        if(tier === 'SSR') return { onset: 0.01, recover: 0.8, worsen: 0.05 };
-        if(tier === 'SR') return { onset: 0.05, recover: 0.5, worsen: 0.1 };
-        if(tier === 'R') return { onset: 0.1, recover: 0.3, worsen: 0.2 };
-        return { onset: 0.25, recover: 0.1, worsen: 0.4 }; 
-    };
-    const rates = getRates(hltTier);
+    const rates = { onset: 0.05, recover: 0.2, worsen: 0.2 };
     if (!n.disease) {
         if (Math.random() < rates.onset) n.disease = '감기';
     } else {
@@ -524,10 +448,7 @@ function triggerSuccession(deceasedHead) {
         btn.innerHTML = `
             <div style="font-weight:bold; margin-bottom:5px;">${child.name} (${child.age}세)</div>
             <div class="trait-box">
-                <span style="color:${getTierColor(child.traits.app.tier)}"><b>[외모]</b> ${child.traits.app.name}</span><br>
-                <span style="color:${getTierColor(child.traits.per.tier)}"><b>[성격]</b> ${child.traits.per.name}</span><br>
-                <span style="color:${getTierColor(child.traits.val.tier)}"><b>[가치]</b> ${child.traits.val.name}</span><br>
-                <span style="color:${getTierColor(child.traits.hlt.tier)}"><b>[건강]</b> ${child.traits.hlt.name}</span>
+                ${buildTraitsBlockHtml(child.traits, { valueLabel: '가치' })}
             </div>`;
         btn.onclick = () => {
             const livingChildCount = Math.max(1, livingChildren.length);
@@ -614,7 +535,7 @@ function triggerMarriage(p) {
     };
 
     for(let i=0; i<3; i++) {
-        const c_app = getRandomTrait('app'), c_per = getRandomTrait('per'), c_val = getRandomTrait('val'), c_hlt = getRandomTrait('hlt');
+        const candidateTraits = createRandomTraitSet();
         const c_visuals = getRandomVisuals(partnerGender);
         const btn = document.createElement('button');
         btn.className = 'choice-btn marriage-choice-btn';
@@ -634,10 +555,7 @@ function triggerMarriage(p) {
         info.innerHTML = `
             <div class="marriage-choice-title">후보 ${i + 1}</div>
             <div class="trait-box">
-                <span style="color:${getTierColor(c_app.tier)}"><b>[외모]</b> ${c_app.name}</span><br>
-                <span style="color:${getTierColor(c_per.tier)}"><b>[성격]</b> ${c_per.name}</span><br>
-                <span style="color:${getTierColor(c_val.tier)}"><b>[가치]</b> ${c_val.name}</span><br>
-                <span style="color:${getTierColor(c_hlt.tier)}"><b>[건강]</b> ${c_hlt.name}</span>
+                ${buildTraitsBlockHtml(candidateTraits, { valueLabel: '가치', showRepresentative: false })}
             </div>`;
 
         layout.appendChild(previewWrap);
@@ -647,9 +565,8 @@ function triggerMarriage(p) {
         btn.onclick = () => {
             const partner = new PersonNode(NAMES[p.gender==='M'?'F':'M'][Math.floor(Math.random()*10)], p.gender==='M'?'F':'M', p.x, p.y, p.level, p.age, [], false, p.isMain, true);
             partner.isMarried = true; p.isMarried = true; p.partner = partner.id; partner.partner = p.id;
-            partner.traits = { app: c_app, per: c_per, val: c_val, hlt: c_hlt };
+            partner.traits = candidateTraits;
             partner.visuals = c_visuals;
-            applyVisualTraitRules(partner.visuals, partner.traits);
             assignRandomCareerForLateJoiner(partner);
             nodes.push(partner);
             nodeMap.set(partner.id, partner);
@@ -683,13 +600,17 @@ function triggerBirth(p) {
     isEventActive = true;
     const gender = Math.random() > 0.5 ? 'M' : 'F';
     const childName = NAMES[gender][Math.floor(Math.random()*10)];
-    
-    const inherit = (cat) => {
-        const r = Math.random();
-        if (r < 0.45) return p.traits[cat]; else if (r < 0.90) return partner.traits[cat]; else return getRandomTrait(cat);
-    };
 
-    const c_app = inherit('app'), c_per = inherit('per'), c_val = inherit('val'), c_hlt = inherit('hlt');
+    const inheritedCoreTraits = (typeof createInheritedCoreTraits === 'function')
+        ? createInheritedCoreTraits(p.traits, partner.traits)
+        : { per: p.traits.per, val: p.traits.val, hlt: p.traits.hlt };
+    const c_app = Math.random() < 0.5 ? { ...p.traits.app } : { ...partner.traits.app };
+    const childTraits = {
+        app: c_app,
+        per: inheritedCoreTraits.per,
+        val: inheritedCoreTraits.val,
+        hlt: inheritedCoreTraits.hlt
+    };
     const c_visuals = inheritVisuals(p.visuals, partner.visuals, gender);
 
     focusOnPerson(p);
@@ -698,18 +619,14 @@ function triggerBirth(p) {
     const container = document.getElementById('choices-container');
     container.innerHTML = `
         <div class="trait-box" style="text-align:left; margin-bottom:15px;">
-            <span style="color:${getTierColor(c_app.tier)}"><b>[외모]</b> ${c_app.name}</span><br>
-            <span style="color:${getTierColor(c_per.tier)}"><b>[성격]</b> ${c_per.name}</span><br>
-            <span style="color:${getTierColor(c_val.tier)}"><b>[가치관]</b> ${c_val.name}</span><br>
-            <span style="color:${getTierColor(c_hlt.tier)}"><b>[건강]</b> ${c_hlt.name}</span>
+            ${buildTraitsBlockHtml(childTraits, { valueLabel: '가치관', showRepresentative: false })}
         </div>
         <button class="choice-btn" style="text-align:center"><b>가계도에 추가</b></button>`;
     container.querySelector('button').onclick = () => {
         const midX = (p.x + partner.x) / 2;
         const child = new PersonNode(childName, gender, midX, p.y + 50, p.level + 1, 0, [p.id, p.partner], false, p.isMain, false);
-        child.traits = { app: c_app, per: c_per, val: c_val, hlt: c_hlt };
+        child.traits = childTraits;
         child.visuals = c_visuals;
-        applyVisualTraitRules(child.visuals, child.traits);
         p.children.push(child.id); nodes.push(child); nodeMap.set(child.id, child); updateLayout();
         targetCamX = (canvas.width / 2) - (child.targetX * scale); targetCamY = (canvas.height / 2) - (child.targetY * scale); isSliding = true;
         updateUI(); closeEvent();
@@ -851,10 +768,7 @@ function showStatus(person) {
         <div class="status-info">${person.gender === 'M' ? '남' : '여'} · ${person.age}세 · ${aliveText}${diseaseText}</div>
         <div class="status-info">직업: ${jobLabel}</div>
         <div class="status-traits">
-            <span style="color:${getTierColor(person.traits.app.tier)}"><b>[외모]</b> ${person.traits.app.name}</span><br>
-            <span style="color:${getTierColor(person.traits.per.tier)}"><b>[성격]</b> ${person.traits.per.name}</span><br>
-            <span style="color:${getTierColor(person.traits.val.tier)}"><b>[가치관]</b> ${person.traits.val.name}</span><br>
-            <span style="color:${getTierColor(person.traits.hlt.tier)}"><b>[건강]</b> ${person.traits.hlt.name}</span>
+            ${buildTraitsBlockHtml(person.traits, { valueLabel: '가치관' })}
         </div>`;
     updateStatusPosition();
     document.getElementById('status-modal').style.display = 'block';
@@ -1026,4 +940,3 @@ Promise.all([
     initGame();
     animate();
 });
-
