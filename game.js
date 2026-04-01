@@ -362,13 +362,49 @@ function initGame() {
 }
 
 function handleDisease(n) {
-    const rates = { onset: 0.05, recover: 0.2, worsen: 0.2 };
+    // 📌 무병장수 특성: 발병 0%, 회복 100%
+    const isLongHealth = (typeof isLongHealthTrait === 'function')
+        ? isLongHealthTrait(n.traits?.hlt)
+        : false;
+    
+    if (isLongHealth) {
+        // 무병장수: 질병 없음 유지, 있으면 즉시 회복
+        n.disease = null;
+        return;
+    }
+    
+    // 기본 확률 (보통 체력/회복력 기준)
+    let baseRates = { onset: 0.05, recover: 0.2, worsen: 0.2 };
+    
+    // 📌 피트니스 & 회복력 특성 반영
+    const hltAttrs = (typeof getHltAttributes === 'function') 
+        ? getHltAttributes(n.traits?.hlt) 
+        : { fitness: 'normal', recovery: 'normal' };
+    
+    // 피트니스에 따른 발병 확률 조정 (기준: normal)
+    const fitnessMultiplier = {
+        'strong': 0.5,     // 강함: 50% 감소
+        'normal': 1.0,     // 보통: 기본값
+        'weak': 1.5        // 약함: 50% 증가
+    };
+    
+    // 회복력에 따른 회복 확률 조정 (기준: normal)
+    const recoveryMultiplier = {
+        'fast': 1.5,       // 빠름: 50% 증가
+        'normal': 1.0,     // 보통: 기본값
+        'slow': 0.5        // 느림: 50% 감소
+    };
+    
+    const onsetRate = baseRates.onset * (fitnessMultiplier[hltAttrs.fitness] || 1.0);
+    const recoverRate = baseRates.recover * (recoveryMultiplier[hltAttrs.recovery] || 1.0);
+    const worsenRate = baseRates.worsen;
+    
     if (!n.disease) {
-        if (Math.random() < rates.onset) n.disease = '감기';
+        if (Math.random() < onsetRate) n.disease = '감기';
     } else {
         const rand = Math.random();
-        if (rand < rates.recover) n.disease = null; 
-        else if (rand < rates.recover + rates.worsen) {
+        if (rand < recoverRate) n.disease = null;
+        else if (rand < recoverRate + worsenRate) {
             if (n.disease === '감기') n.disease = '몸살';
             else if (n.disease === '몸살') n.disease = '혼절';
             else if (n.disease === '혼절') { n.isAlive = false; n.disease = '병사'; }
@@ -410,14 +446,33 @@ function startTimers() {
                     continue;
                 }
 
-                if (n.age > 80 && Math.random() < 0.1) {
-                    n.isAlive = false;
-                    if (n.isHead) {
-                        triggerSuccession(n);
-                        successionTriggered = true;
-                        break;
+                // 📌 자연 사망
+                const isLongHealth = (typeof isLongHealthTrait === 'function')
+                    ? isLongHealthTrait(n.traits?.hlt)
+                    : false;
+                
+                if (isLongHealth) {
+                    // 무병장수: 120살에 100% 사망
+                    if (n.age >= 120) {
+                        n.isAlive = false;
+                        if (n.isHead) {
+                            triggerSuccession(n);
+                            successionTriggered = true;
+                            break;
+                        }
+                        updateUI();
                     }
-                    updateUI();
+                } else {
+                    // 일반인: 80살부터 10% 확률 사망
+                    if (n.age > 80 && Math.random() < 0.1) {
+                        n.isAlive = false;
+                        if (n.isHead) {
+                            triggerSuccession(n);
+                            successionTriggered = true;
+                            break;
+                        }
+                        updateUI();
+                    }
                 }
             }
 

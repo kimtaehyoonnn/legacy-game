@@ -948,6 +948,27 @@ const VISUAL_TRAIT_RULES = [
     { condition: { frontHair: 'fFHA', face: 'Fa', eyes: 'EA', nose: 'NA', mouth: 'MA' }, override: { app: { tier: 'SSR', name: '여신강림' } } },
 ];
 
+// 📌 건강(hlt) 특성에서 모든 속성 추출
+function getHltAttributes(hltTrait) {
+    const defaults = { fitness: 'normal', recovery: 'normal', vulnerability: 'none', stress: 'normal' };
+    if (!hltTrait || !hltTrait.representatives) return defaults;
+    return {
+        fitness: hltTrait.representatives.fitness || 'normal',
+        recovery: hltTrait.representatives.recovery || 'normal',
+        vulnerability: hltTrait.representatives.vulnerability || 'none',
+        stress: hltTrait.representatives.stress || 'normal'
+    };
+}
+
+// 무병장수(SSR) 조건 체크
+function isLongHealthTrait(hltTrait) {
+    const attrs = getHltAttributes(hltTrait);
+    return attrs.fitness === 'strong' && 
+           attrs.recovery === 'fast' && 
+           attrs.vulnerability === 'none' && 
+           attrs.stress === 'high';
+}
+
 function applyVisualTraitRules(visuals, traits) {
     for (const rule of VISUAL_TRAIT_RULES) {
         const match = Object.entries(rule.condition)
