@@ -951,7 +951,11 @@ const VISUAL_TRAIT_RULES = [
 // 📌 건강(hlt) 특성에서 모든 속성 추출
 function getHltAttributes(hltTrait) {
     const defaults = { fitness: 'normal', recovery: 'normal', vulnerability: 'none', stress: 'normal' };
-    if (!hltTrait || !hltTrait.representatives) return defaults;
+    if (!hltTrait) return defaults;
+    
+    // 기본값 구조 (Person.js 초기화)를 처리
+    if (!hltTrait.representatives) return defaults;
+    
     return {
         fitness: hltTrait.representatives.fitness || 'normal',
         recovery: hltTrait.representatives.recovery || 'normal',
@@ -962,11 +966,17 @@ function getHltAttributes(hltTrait) {
 
 // 무병장수(SSR) 조건 체크
 function isLongHealthTrait(hltTrait) {
-    const attrs = getHltAttributes(hltTrait);
-    return attrs.fitness === 'strong' && 
-           attrs.recovery === 'fast' && 
-           attrs.vulnerability === 'none' && 
-           attrs.stress === 'high';
+    try {
+        if (!hltTrait) return false;
+        const attrs = getHltAttributes(hltTrait);
+        return attrs.fitness === 'strong' && 
+               attrs.recovery === 'fast' && 
+               attrs.vulnerability === 'none' && 
+               attrs.stress === 'high';
+    } catch (e) {
+        console.warn('[Warning] isLongHealthTrait 에러:', e);
+        return false;
+    }
 }
 
 function applyVisualTraitRules(visuals, traits) {

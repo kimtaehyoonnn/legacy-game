@@ -16,28 +16,36 @@ function isAliveAndValidInGameFamilyMember(person) {
     return !!person && person.isAlive && person.isMain;
 }
 
+const MAX_FLOATING_TEXTS = 200;
+
 function settleMonthlyFamilyAsset() {
     let monthlyCashflowKrw = 0;
-    for (const person of nodes) {
+    let aliveMainCount = 0;
+    for (let i = 0; i < nodes.length; i++) {
+        const person = nodes[i];
         if (!isAliveAndValidInGameFamilyMember(person)) continue;
+        aliveMainCount++;
         const income = getFixedMonthlyIncomeKrw(person);
         const expense = getFixedMonthlyExpenseKrw(person.age);
         const net = income - expense;
         monthlyCashflowKrw += net;
-        // 플로팅 텍스트 스폰
-        const netMan = Math.floor(net / 10000);
-        if (netMan !== 0) {
-            floatingTexts.push({
-                person: person,
-                offsetY: 0,
-                text: `${net > 0 ? '+' : ''}${netMan}만`,
-                color: net > 0 ? '#27ae60' : '#e74c3c',
-                alpha: 1
-            });
+        // 📌 플로팅 텍스트 제한: 배열이 너무 커지면 스폰 중단
+        if (floatingTexts.length < MAX_FLOATING_TEXTS) {
+            const netMan = Math.floor(net / 10000);
+            if (netMan !== 0) {
+                floatingTexts.push({
+                    person: person,
+                    offsetY: 0,
+                    text: `${net > 0 ? '+' : ''}${netMan}만`,
+                    color: net > 0 ? '#27ae60' : '#e74c3c',
+                    alpha: 1
+                });
+            }
         }
     }
     lastMonthlyCashflowKrw = monthlyCashflowKrw;
     familyAssetKrw += monthlyCashflowKrw;
+    _cachedAliveCount = aliveMainCount;
 }
 
 function formatKoreanMoneyUnits(amountKrw) {

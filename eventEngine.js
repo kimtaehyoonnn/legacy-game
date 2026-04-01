@@ -31,7 +31,7 @@ const EVENT_RESULT_HANDLERS = {
         } else {
             displayText = `${result.amount > 0 ? '+' : '-'}${abs.toLocaleString('ko-KR')}원`;
         }
-        if (person && typeof floatingTexts !== 'undefined') {
+        if (person && typeof floatingTexts !== 'undefined' && floatingTexts.length < MAX_FLOATING_TEXTS) {
             floatingTexts.push({
                 person: person,
                 offsetY: -30,
@@ -58,7 +58,7 @@ function buildGameContext() {
         globalMonths,
         year: Math.floor(globalMonths / 12),
         totalPopulation: nodes.length,
-        alivePopulation: nodes.filter(n => n.isAlive).length
+        alivePopulation: _cachedAliveCount
     };
 }
 

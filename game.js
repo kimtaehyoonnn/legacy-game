@@ -46,6 +46,9 @@ let traitUserActionSeq = 0;
 // 플로팅 텍스트 (월급 연출)
 const floatingTexts = [];
 
+// 📌 생존 인구 캐시 (매 프레임 filter 호출 방지)
+let _cachedAliveCount = 1;
+
 function getDomainTraitDisplayText(domainKey, trait, showRepresentative = true) {
     if (!trait) return '미정';
     const baseName = trait.name || '미정';
@@ -156,18 +159,18 @@ function enqueueYearlyEvents() {
 
     const gameCtx = buildGameContext();
 
-    const candidates = nodes
-        .filter(n => n.isAlive && n.isMain)
-        .sort((a, b) => a.id - b.id);
-
-    for (const person of candidates) {
+    // 📌 최적화: alive 캐시 사용
+    const aliveIds = getAliveNodes();
+    for (let ai = 0; ai < aliveIds.length; ai++) {
+        const person = nodes[aliveIds[ai]];
+        if (!person.isAlive || !person.isMain) continue;
         const events = collectEligibleEvents(person, gameCtx);
-        events.forEach(eventDef => {
+        for (let j = 0; j < events.length; j++) {
             yearlyEventQueue.push({
                 personId: person.id,
-                eventDef
+                eventDef: events[j]
             });
-        });
+        }
     }
 }
 
@@ -264,21 +267,48 @@ function updateLayout() {
     const PARTNER_SPACING = 280; 
     const LEVEL_HEIGHT = 450; 
 
-    function getSubTreeWidth(node) {
-        let myWidth = (node.partner !== null) ? PARTNER_SPACING : 100;
-        if (node.children.length === 0) return myWidth;
+    if (nodes.length === 0) return;
+    const root = nodes[0];
 
-        let childrenWidth = 0;
-        node.children.forEach(childId => {
-            let childNode = nodeMap.get(childId);
-            if(childNode) childrenWidth += getSubTreeWidth(childNode);
-        });
-        childrenWidth += (node.children.length - 1) * NODE_SPACING;
-        return Math.max(myWidth, childrenWidth);
+    // 📌 반복문 기반 레이아웃 (스택 오버플로우 방지)
+    // 1단계: 후위순회 순서(leaf→root) 구축
+    const postOrder = [];
+    const stack = [root];
+    while (stack.length > 0) {
+        const n = stack.pop();
+        postOrder.push(n);
+        for (let i = 0; i < n.children.length; i++) {
+            const child = nodeMap.get(n.children[i]);
+            if (child) stack.push(child);
+        }
+    }
+    postOrder.reverse(); // leaf부터 처리
+
+    // 2단계: 서브트리 너비 계산 (leaf→root)
+    const widthMap = new Map();
+    for (let i = 0; i < postOrder.length; i++) {
+        const n = postOrder[i];
+        const myWidth = (n.partner !== null) ? PARTNER_SPACING : 100;
+        if (n.children.length === 0) {
+            widthMap.set(n.id, myWidth);
+        } else {
+            let childrenWidth = 0;
+            for (let j = 0; j < n.children.length; j++) {
+                const cw = widthMap.get(n.children[j]);
+                if (cw !== undefined) childrenWidth += cw;
+            }
+            childrenWidth += (n.children.length - 1) * NODE_SPACING;
+            widthMap.set(n.id, Math.max(myWidth, childrenWidth));
+        }
     }
 
-    function setPositions(node, centerX, level) {
+    // 3단계: 위치 배정 (root→leaf, 반복문)
+    const posQueue = [{ node: root, centerX: 0, level: 0 }];
+    let qi = 0;
+    while (qi < posQueue.length) {
+        const { node, centerX, level } = posQueue[qi++];
         node.targetY = level * LEVEL_HEIGHT;
+
         if (node.partner !== null) {
             const partnerNode = nodeMap.get(node.partner);
             if (partnerNode) {
@@ -291,20 +321,28 @@ function updateLayout() {
         }
 
         if (node.children.length > 0) {
-            const childNodes = node.children.map(id => nodeMap.get(id)).filter(n => n);
-            const childWidths = childNodes.map(c => getSubTreeWidth(c));
-            const totalWidth = childWidths.reduce((sum, w) => sum + w, 0) + (childNodes.length - 1) * NODE_SPACING;
-            
+            const childNodes = [];
+            const childWidths = [];
+            let totalWidth = 0;
+            for (let j = 0; j < node.children.length; j++) {
+                const c = nodeMap.get(node.children[j]);
+                if (c) {
+                    const w = widthMap.get(c.id) || 100;
+                    childNodes.push(c);
+                    childWidths.push(w);
+                    totalWidth += w;
+                }
+            }
+            totalWidth += (childNodes.length - 1) * NODE_SPACING;
+
             let startX = centerX - totalWidth / 2;
-            childNodes.forEach((child, index) => {
-                let w = childWidths[index];
-                setPositions(child, startX + w / 2, level + 1);
+            for (let j = 0; j < childNodes.length; j++) {
+                const w = childWidths[j];
+                posQueue.push({ node: childNodes[j], centerX: startX + w / 2, level: level + 1 });
                 startX += w + NODE_SPACING;
-            });
+            }
         }
     }
-
-    if (nodes.length > 0) setPositions(nodes[0], 0, 0); 
 }
 
 function initGame() {
@@ -315,6 +353,7 @@ function initGame() {
     lastMonthlyCashflowKrw = 0;
     traitUserActionSeq = 0;
     yearlyEventQueue = [];
+    _cachedAliveCount = 1;
     camX = canvas.width / 2; camY = 150;
     isEventActive = false; // 이벤트 잠금 초기화
     
@@ -363,23 +402,32 @@ function initGame() {
 
 function handleDisease(n) {
     // 📌 무병장수 특성: 발병 0%, 회복 100%
-    const isLongHealth = (typeof isLongHealthTrait === 'function')
-        ? isLongHealthTrait(n.traits?.hlt)
-        : false;
-    
-    if (isLongHealth) {
-        // 무병장수: 질병 없음 유지, 있으면 즉시 회복
-        n.disease = null;
-        return;
+    try {
+        const isLongHealth = (typeof isLongHealthTrait === 'function')
+            ? isLongHealthTrait(n.traits?.hlt)
+            : false;
+        
+        if (isLongHealth) {
+            // 무병장수: 질병 없음 유지, 있으면 즉시 회복
+            n.disease = null;
+            return;
+        }
+    } catch (e) {
+        console.warn('[Warning] 특성 진단 실패:', e);
     }
     
     // 기본 확률 (보통 체력/회복력 기준)
     let baseRates = { onset: 0.05, recover: 0.2, worsen: 0.2 };
     
     // 📌 피트니스 & 회복력 특성 반영
-    const hltAttrs = (typeof getHltAttributes === 'function') 
-        ? getHltAttributes(n.traits?.hlt) 
-        : { fitness: 'normal', recovery: 'normal' };
+    let hltAttrs = { fitness: 'normal', recovery: 'normal' };
+    try {
+        if (typeof getHltAttributes === 'function') {
+            hltAttrs = getHltAttributes(n.traits?.hlt);
+        }
+    } catch (e) {
+        console.warn('[Warning] 건강 속성 추출 실패:', e);
+    }
     
     // 피트니스에 따른 발병 확률 조정 (기준: normal)
     const fitnessMultiplier = {
@@ -407,9 +455,62 @@ function handleDisease(n) {
         else if (rand < recoverRate + worsenRate) {
             if (n.disease === '감기') n.disease = '몸살';
             else if (n.disease === '몸살') n.disease = '혼절';
-            else if (n.disease === '혼절') { n.isAlive = false; n.disease = '병사'; }
+            else if (n.disease === '혼절') { n.isAlive = false; n.disease = '병사'; n.deathMonth = globalMonths; }
         }
     }
+}
+
+// 📌 오래된 사망 노드 정리 (사망 후 100년 지난 노드 제거)
+function pruneDeadNodes() {
+    const cutoff = globalMonths - 1200; // 100년 = 1200개월
+    const before = nodes.length;
+    const keepIds = new Set();
+    // 1단계: 유지할 노드 ID 수집
+    for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        if (n.isAlive || n.isHead || (n.deathMonth !== undefined && n.deathMonth > cutoff)) {
+            keepIds.add(n.id);
+        }
+    }
+    // 부모/파트너가 유지 노드인 경우 자녀/파트너도 유지
+    for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        if (!keepIds.has(n.id)) continue;
+        if (n.partner !== null) keepIds.add(n.partner);
+        for (let j = 0; j < n.children.length; j++) keepIds.add(n.children[j]);
+    }
+    // 2단계: nodes 배열 재구성 + nodeMap 정리
+    const newNodes = [];
+    for (let i = 0; i < nodes.length; i++) {
+        if (keepIds.has(nodes[i].id)) {
+            newNodes.push(nodes[i]);
+        } else {
+            nodeMap.delete(nodes[i].id);
+        }
+    }
+    nodes = newNodes;
+    markAliveNodesDirty();
+    const removed = before - nodes.length;
+    if (removed > 0) console.log(`[Prune] ${removed}개 고대 사망 노드 제거 (총 ${nodes.length}개 유지)`);
+}
+
+// 📌 생존 노드 인덱스 (매 yearly tick마다 갱신, 매월 전체 순회 방지)
+let _aliveNodeIds = [];
+let _aliveNodesDirty = true;
+
+function getAliveNodes() {
+    if (_aliveNodesDirty) {
+        _aliveNodeIds = [];
+        for (let i = 0; i < nodes.length; i++) {
+            if (nodes[i].isAlive) _aliveNodeIds.push(i);
+        }
+        _aliveNodesDirty = false;
+    }
+    return _aliveNodeIds;
+}
+
+function markAliveNodesDirty() {
+    _aliveNodesDirty = true;
 }
 
 function startTimers() {
@@ -421,8 +522,12 @@ function startTimers() {
         openNextQueuedEvent();
     }
 
+    let _tickRunning = false;
     monthTimer = setInterval(() => {
         if(isEventActive) return;
+        if(_tickRunning) return;
+        _tickRunning = true;
+        try {
         globalMonths++;
         settleMonthlyFamilyAsset();
         updateUI();
@@ -431,7 +536,12 @@ function startTimers() {
         let successionTriggered = false;
 
         if (isYearlyTick) {
-            for (let n of nodes) {
+            // 10년마다 오래된 사망 노드 정리
+            if (globalMonths % 120 === 0) pruneDeadNodes();
+            markAliveNodesDirty();
+            const aliveIds = getAliveNodes();
+            for (let ai = 0; ai < aliveIds.length; ai++) {
+                const n = nodes[aliveIds[ai]];
                 if (!n.isAlive) continue;
 
                 n.age++;
@@ -447,32 +557,38 @@ function startTimers() {
                 }
 
                 // 📌 자연 사망
-                const isLongHealth = (typeof isLongHealthTrait === 'function')
-                    ? isLongHealthTrait(n.traits?.hlt)
-                    : false;
-                
-                if (isLongHealth) {
-                    // 무병장수: 120살에 100% 사망
-                    if (n.age >= 120) {
-                        n.isAlive = false;
-                        if (n.isHead) {
-                            triggerSuccession(n);
-                            successionTriggered = true;
-                            break;
+                try {
+                    const isLongHealth = (typeof isLongHealthTrait === 'function')
+                        ? isLongHealthTrait(n.traits?.hlt)
+                        : false;
+                    
+                    if (isLongHealth) {
+                        // 무병장수: 120살에 100% 사망
+                        if (n.age >= 120) {
+                            n.isAlive = false;
+                            n.deathMonth = globalMonths;
+                            if (n.isHead) {
+                                triggerSuccession(n);
+                                successionTriggered = true;
+                                break;
+                            }
+                            updateUI();
                         }
-                        updateUI();
-                    }
-                } else {
-                    // 일반인: 80살부터 10% 확률 사망
-                    if (n.age > 80 && Math.random() < 0.1) {
-                        n.isAlive = false;
-                        if (n.isHead) {
-                            triggerSuccession(n);
-                            successionTriggered = true;
-                            break;
+                    } else {
+                        // 일반인: 80살부터 10% 확률 사망
+                        if (n.age > 80 && Math.random() < 0.1) {
+                            n.isAlive = false;
+                            n.deathMonth = globalMonths;
+                            if (n.isHead) {
+                                triggerSuccession(n);
+                                successionTriggered = true;
+                                break;
+                            }
+                            updateUI();
                         }
-                        updateUI();
                     }
+                } catch (e) {
+                    console.warn('[Warning] 자연 사망 판단 실패:', e);
                 }
             }
 
@@ -482,7 +598,9 @@ function startTimers() {
                 return;
             }
 
-            for (let n of nodes) {
+            const aliveIds2 = getAliveNodes();
+            for (let ri = 0; ri < aliveIds2.length; ri++) {
+                const n = nodes[aliveIds2[ri]];
                 if (!n.isAlive || !n.isMain) continue;
                 if (n.age >= 65) retirePersonJob(n);
             }
@@ -494,7 +612,9 @@ function startTimers() {
             }
         }
 
-        for (let n of nodes) {
+        const aliveIds3 = getAliveNodes();
+        for (let mi = 0; mi < aliveIds3.length; mi++) {
+            const n = nodes[aliveIds3[mi]];
             if (!n.isAlive) continue;
             if (n.isMain && !n.isSpouse) {
                 if (n.age >= 20 && !n.isMarried && Math.random() < 0.1) { triggerMarriage(n); break; }
@@ -511,6 +631,7 @@ function startTimers() {
         }
         const yearText = `${Math.floor(globalMonths/12)}년째 가문 진행 중`;
         document.getElementById('year-ui').innerText = yearText;
+        } finally { _tickRunning = false; }
     }, 2000 / currentSpeed);
 }
 
@@ -736,7 +857,8 @@ function triggerBirth(p) {
             ${buildTraitsBlockHtml(childTraits, { valueLabel: '가치관', showRepresentative: false })}
         </div>
         <button class="choice-btn" style="text-align:center"><b>가계도에 추가</b></button>`;
-    container.querySelector('button').onclick = () => {
+    const addBtn = container.querySelector('button');
+    addBtn.onclick = () => {
         const midX = (p.x + partner.x) / 2;
         const child = new PersonNode(childName, gender, midX, p.y + 50, p.level + 1, 0, [p.id, p.partner], false, p.isMain, false);
         child.traits = childTraits;
@@ -745,6 +867,12 @@ function triggerBirth(p) {
         targetCamX = (canvas.width / 2) - (child.targetX * scale); targetCamY = (canvas.height / 2) - (child.targetY * scale); isSliding = true;
         updateUI(); closeEvent();
     };
+    
+    // 📌 자동선택 지원: 생명탄생 팝업도 자동으로 추가
+    if (autoChoiceEnabled) {
+        setTimeout(() => addBtn.click(), 150);
+    }
+    
     document.getElementById('event-modal').style.display = 'block';
 }
 
@@ -794,14 +922,27 @@ function triggerBirthDecision(p) {
 }
 
 function markAsSideBranch(nodeId) {
-    const node = nodeMap.get(nodeId);
-    if(node) { node.isMain = false; if(node.partner !== null) { const pNode = nodeMap.get(node.partner); if(pNode) pNode.isMain = false; } node.children.forEach(c => markAsSideBranch(c)); }
+    // 📌 반복문 기반 (스택 오버플로우 방지)
+    const stack = [nodeId];
+    while (stack.length > 0) {
+        const id = stack.pop();
+        const node = nodeMap.get(id);
+        if (!node) continue;
+        node.isMain = false;
+        if (node.partner !== null) {
+            const pNode = nodeMap.get(node.partner);
+            if (pNode) pNode.isMain = false;
+        }
+        for (let i = 0; i < node.children.length; i++) {
+            stack.push(node.children[i]);
+        }
+    }
 }
 
 function updateUI() {
     const popElement = document.getElementById('pop-ui');
     if (popElement) {
-        popElement.innerText = `인구: ${nodes.filter(n => n.isAlive).length}명`;
+        popElement.innerText = `인구: ${_cachedAliveCount}명`;
     }
 
     const assetElement = document.getElementById('asset-ui');
@@ -810,7 +951,11 @@ function updateUI() {
     }
     const totalAssetEl = document.getElementById('total-asset-ui');
     if (totalAssetEl) {
-        totalAssetEl.innerText = `총 자산: ${formatKoreanMoneyUnits(familyAssetKrw)}`;
+        // 📌 월간 변동액 표시
+        const cashflowSign = lastMonthlyCashflowKrw >= 0 ? '+' : '';
+        const cashflowColor = lastMonthlyCashflowKrw >= 0 ? '#27ae60' : '#e74c3c';
+        const cashflowStr = formatKoreanMoneyUnits(lastMonthlyCashflowKrw);
+        totalAssetEl.innerHTML = `총 자산: ${formatKoreanMoneyUnits(familyAssetKrw)} <span style="color:${cashflowColor}; font-size:12px; font-weight:bold;">(${cashflowSign}${cashflowStr}/월)</span>`;
         totalAssetEl.style.color = familyAssetKrw >= 0 ? '#27ae60' : '#e74c3c';
     }
 }
@@ -1058,12 +1203,17 @@ function animate() {
     }
 
     // 📌 캐릭터 렌더링 (뷰포트 안에 있는 것만)
-    // 뷰포트 밖 노드도 위치 보간 계속 (smooth movement)
+    // 📌 위치 보간 + 렌더링 (죽은 노드는 위치 고정이므로 보간 불필요)
     for (let i = 0; i < nodes.length; i++) {
         const n = nodes[i];
-        // 모든 노드 위치 보간 (smooth movement)
-        n.x += (n.targetX - n.x) * 0.15;
-        n.y += (n.targetY - n.y) * 0.15;
+        if (n.isAlive) {
+            n.x += (n.targetX - n.x) * 0.15;
+            n.y += (n.targetY - n.y) * 0.15;
+        } else if (n.x !== n.targetX || n.y !== n.targetY) {
+            // 죽은 노드: 목표 위치로 즉시 이동 (1회만)
+            n.x = n.targetX;
+            n.y = n.targetY;
+        }
         
         // 보이는 노드만 그리기
         if (n.x >= vpLeft && n.x <= vpRight && n.y >= vpTop && n.y <= vpBottom) {
@@ -1075,15 +1225,18 @@ function animate() {
     ctx.font = 'bold 16px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+    let writeIdx = 0;
+    for (let i = 0; i < floatingTexts.length; i++) {
         const ft = floatingTexts[i];
         ft.offsetY -= 0.8;
         ft.alpha -= 0.015;
-        if (ft.alpha <= 0) { floatingTexts.splice(i, 1); continue; }
+        if (ft.alpha <= 0) continue;
+        floatingTexts[writeIdx++] = ft;
         ctx.globalAlpha = ft.alpha;
         ctx.fillStyle = ft.color;
         ctx.fillText(ft.text, ft.person.x, ft.person.y - 90 + ft.offsetY);
     }
+    floatingTexts.length = writeIdx;
     ctx.globalAlpha = 1;
 
     ctx.restore();
