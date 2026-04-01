@@ -921,26 +921,32 @@ function animate() {
     const vpTop    = -camY / scale - margin;
     const vpBottom = (canvas.height - camY) / scale + margin;
     
+    // 📌 최적화: 부모→자녀, 부부 연결선 그리기 (성능 개선)
+    // - 조기 경계 체크로 nodeMap 호출 최소화
+    // - 선 색상 상태 캐싱
     ctx.lineWidth = 3;
-    nodes.forEach(n => {
-        // 📌 부모→자녀 연결선 그리기
-        if(n.parents.length) {
+    let prevLineWidth = 3;
+    let prevStrokeColor = "#cbd5e0";
+
+    for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        
+        // 📌 부모→자녀 연결선: 자식이 뷰포트 근처에만 그리기
+        if (n.parents.length && (n.x >= vpLeft - 400 && n.x <= vpRight + 400)) {
             const p1 = nodeMap.get(n.parents[0]);
-            if(p1) {
+            if (p1) {
                 const partner = p1.partner !== null ? nodeMap.get(p1.partner) : null;
                 const midX = partner ? (p1.x + partner.x) / 2 : p1.x; 
                 const midY = partner ? (p1.y + partner.y) / 2 : p1.y;
 
-                // 컬링: 양쪽 끝 모두 화면 밖이면 스킵
-                const lineVisible = !(
-                    (n.x < vpLeft && midX < vpLeft) || (n.x > vpRight && midX > vpRight) ||
-                    (n.y < vpTop && midY < vpTop) || (n.y > vpBottom && midY > vpBottom)
-                );
-                if (!lineVisible) return;
+                // 빠른 AABB 충돌 체크
+                if ((n.x < vpLeft && midX < vpLeft) || (n.x > vpRight && midX > vpRight) ||
+                    (n.y < vpTop && midY < vpTop) || (n.y > vpBottom && midY > vpBottom)) {
+                    continue;
+                }
                 
                 let lineWidth = 3;
                 let strokeColor = "#cbd5e0";
-                
                 const eitherHead = p1.isHead || (partner && partner.isHead);
 
                 if (!p1.isAlive && (!partner || !partner.isAlive)) {
@@ -954,8 +960,16 @@ function animate() {
                     lineWidth = 3.5;
                 }
                 
-                ctx.lineWidth = lineWidth;
-                ctx.strokeStyle = strokeColor;
+                // 상태 변경 시에만 캔버스 업데이트
+                if (lineWidth !== prevLineWidth) {
+                    ctx.lineWidth = lineWidth;
+                    prevLineWidth = lineWidth;
+                }
+                if (strokeColor !== prevStrokeColor) {
+                    ctx.strokeStyle = strokeColor;
+                    prevStrokeColor = strokeColor;
+                }
+                
                 ctx.beginPath();
                 ctx.moveTo(n.x, n.y - n.radius * 1.3);
                 ctx.bezierCurveTo(n.x, n.y - 180, midX, midY + 180, midX, midY);
@@ -963,35 +977,44 @@ function animate() {
             }
         }
         
-        // 📌 부부 연결선 (가로선)
-        if(n.partner !== null && n.gender === 'M') {
+        // 📌 부부 연결선: 남자만 처리 (중복 방지)
+        if (n.partner !== null && n.gender === 'M' && (n.x >= vpLeft - 300 && n.x <= vpRight + 300)) {
             const p = nodeMap.get(n.partner);
-            if(p) {
-                const coupleVisible = !(
-                    (n.x < vpLeft && p.x < vpLeft) || (n.x > vpRight && p.x > vpRight) ||
-                    (n.y < vpTop && p.y < vpTop) || (n.y > vpBottom && p.y > vpBottom)
-                );
-                if (!coupleVisible) return;
-                ctx.lineWidth = n.isHead ? 3.5 : 2.5;
-                ctx.strokeStyle = n.isHead ? "#d63031" : "#9b59b6";
+            if (p && !((n.x < vpLeft && p.x < vpLeft) || (n.x > vpRight && p.x > vpRight) ||
+                       (n.y < vpTop && p.y < vpTop) || (n.y > vpBottom && p.y > vpBottom))) {
+                const lineWidth = n.isHead ? 3.5 : 2.5;
+                const strokeColor = n.isHead ? "#d63031" : "#9b59b6";
+                
+                if (lineWidth !== prevLineWidth) {
+                    ctx.lineWidth = lineWidth;
+                    prevLineWidth = lineWidth;
+                }
+                if (strokeColor !== prevStrokeColor) {
+                    ctx.strokeStyle = strokeColor;
+                    prevStrokeColor = strokeColor;
+                }
+                
                 ctx.beginPath();
                 ctx.moveTo(n.x, n.y);
                 ctx.lineTo(p.x, p.y);
                 ctx.stroke();
             }
         }
-    });
+    }
 
-    // 캐릭터 렌더링 (뷰포트 안에 있는 것만)
-    nodes.forEach(n => {
+    // 📌 캐릭터 렌더링 (뷰포트 안에 있는 것만)
+    // 뷰포트 밖 노드도 위치 보간 계속 (smooth movement)
+    for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        // 모든 노드 위치 보간 (smooth movement)
+        n.x += (n.targetX - n.x) * 0.15;
+        n.y += (n.targetY - n.y) * 0.15;
+        
+        // 보이는 노드만 그리기
         if (n.x >= vpLeft && n.x <= vpRight && n.y >= vpTop && n.y <= vpBottom) {
             n.draw(ctx, scale);
-        } else {
-            // 화면 밖이라도 위치 보간은 계속
-            n.x += (n.targetX - n.x) * 0.15;
-            n.y += (n.targetY - n.y) * 0.15;
         }
-    });
+    }
 
     // 플로팅 텍스트 렌더 + 업데이트
     ctx.font = 'bold 16px sans-serif';
