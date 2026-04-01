@@ -267,10 +267,10 @@ class PersonNode {
             ctx.textBaseline = "middle";
 
             const traitsList = [
-                { prefix: '외', ...this.traits.app },
-                { prefix: '성', tier: this.traits.per?.tier, name: getNodeTraitText(this.traits.per) },
-                { prefix: '가', tier: this.traits.val?.tier, name: getNodeTraitText(this.traits.val) },
-                { prefix: '건', tier: this.traits.hlt?.tier, name: getNodeTraitText(this.traits.hlt) }
+                { prefix: '외모', ...this.traits.app },
+                { prefix: '성격', tier: this.traits.per?.tier, name: getNodeTraitText(this.traits.per) },
+                { prefix: '가치', tier: this.traits.val?.tier, name: getNodeTraitText(this.traits.val) },
+                { prefix: '건강', tier: this.traits.hlt?.tier, name: getNodeTraitText(this.traits.hlt) }
             ];
 
             traitsList.forEach((t, i) => {

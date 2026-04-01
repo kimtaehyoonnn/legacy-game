@@ -8,13 +8,44 @@ const SOUNDS = {
 let savedVolume = 0.4;
 SOUNDS.bgmMain.volume = savedVolume;
 
-function startBgm() {
-    SOUNDS.bgmMain.play().catch(() => {});
-    document.removeEventListener('click', startBgm);
-    document.removeEventListener('touchstart', startBgm);
+function _removeBgmStartListeners() {
+    document.removeEventListener('click', _onFirstInteractionBgm);
+    document.removeEventListener('touchstart', _onFirstInteractionBgm);
+    document.removeEventListener('keydown', _onFirstInteractionBgm);
 }
-document.addEventListener('click', startBgm);
-document.addEventListener('touchstart', startBgm);
+
+function _onFirstInteractionBgm() {
+    const overlay = document.getElementById('autoplay-overlay');
+    if (overlay) overlay.remove();
+    SOUNDS.bgmMain.play().catch(() => {});
+    _removeBgmStartListeners();
+}
+
+// 브라우저 자동재생 정책 대응: 로드 즉시 재생 시도, 실패 시 오버레이 표시
+(function initBgm() {
+    const playPromise = SOUNDS.bgmMain.play();
+    if (playPromise !== undefined) {
+        playPromise.catch(() => {
+            // 자동재생 차단됨 → 오버레이로 안내
+            const overlay = document.createElement('div');
+            overlay.id = 'autoplay-overlay';
+            overlay.style.cssText = [
+                'position:fixed', 'inset:0', 'z-index:99999',
+                'display:flex', 'flex-direction:column',
+                'align-items:center', 'justify-content:center',
+                'background:rgba(0,0,0,0.55)', 'cursor:pointer',
+                'font-family:Alimjang,sans-serif'
+            ].join(';');
+            overlay.innerHTML = '<div style="color:#fff;font-size:26px;font-weight:bold;text-shadow:0 2px 8px #000;">🎵 화면을 클릭하면 게임이 시작됩니다</div>';
+            overlay.addEventListener('click', _onFirstInteractionBgm, { once: true });
+            document.body.appendChild(overlay);
+
+            document.addEventListener('click', _onFirstInteractionBgm);
+            document.addEventListener('touchstart', _onFirstInteractionBgm);
+            document.addEventListener('keydown', _onFirstInteractionBgm);
+        });
+    }
+})();
 
 function setVolume(val) {
     const v = Math.max(0, Math.min(100, Number(val))) / 100;
@@ -100,6 +131,20 @@ function buildTraitsBlockHtml(traits, options = {}) {
     const perTrait = traits?.per || { tier: 'N', name: '미정' };
     const valTrait = traits?.val || { tier: 'N', name: '미정' };
     const hltTrait = traits?.hlt || { tier: 'N', name: '미정' };
+
+    if (options.grid) {
+        const makeBadge = (prefix, tier, label) => {
+            const bg = getTierColor(tier);
+            return `<div style="background:${bg};color:#fff;border-radius:6px;padding:3px 6px;font-size:13px;font-weight:bold;font-family:sans-serif;line-height:1.4;">` +
+                   `<span style="opacity:0.85">[${prefix}]</span> ${label}</div>`;
+        };
+        return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">` +
+            makeBadge('외모', appTrait.tier, appTrait.name) +
+            makeBadge('성격', perTrait.tier, getDomainTraitDisplayText('per', perTrait, showRepresentative)) +
+            makeBadge(valueLabel, valTrait.tier, getDomainTraitDisplayText('val', valTrait, showRepresentative)) +
+            makeBadge('건강', hltTrait.tier, getDomainTraitDisplayText('hlt', hltTrait, showRepresentative)) +
+        `</div>`;
+    }
 
     return `
         <span style="color:${getTierColor(appTrait.tier)}"><b>[외모]</b> ${appTrait.name}</span><br>
@@ -340,7 +385,7 @@ function initGame() {
     // founder를 화면 중앙에 명시적으로 배치
     const founderX = 0;
     const founderY = 0;
-    const founder = new PersonNode("1대 가주", 'M', founderX, founderY, 0, 19, [], true, true, false); 
+    const founder = new PersonNode("1대 가주", 'M', founderX, founderY, 0, 20, [], true, true, false); 
     founder.traits = createRandomTraitSet();
     founder.visuals = getRandomVisuals('M');
     nodes.push(founder);
@@ -349,7 +394,18 @@ function initGame() {
     // 레이아웃 업데이트로 targetX, targetY 설정
     updateLayout();
     
-    updateUI(); 
+    updateUI();
+
+    // 시작 즉시 1대 가주 직업 선택 이벤트 표시
+    const careerEventDef = (typeof GENERAL_EVENT_DEFINITIONS !== 'undefined')
+        ? GENERAL_EVENT_DEFINITIONS.find(e => e.code === 'career_initial_choice')
+        : null;
+    if (careerEventDef) {
+        ensureEventState(founder);
+        yearlyEventQueue.unshift({ personId: founder.id, eventDef: careerEventDef });
+        isEventActive = false;
+    }
+
     // 속도 버튼 선택 후 타이머 시작
     const speedBtn = document.querySelectorAll('.speed-btn')[1];
     if (speedBtn) setSpeed(1, speedBtn);
@@ -375,6 +431,11 @@ function startTimers() {
     if(monthTimer) clearInterval(monthTimer);
     if(currentSpeed === 0) return; 
     
+    // 큐에 이벤트가 쌓여 있으면 타이머 첫 틱 전에 즉시 열기
+    if (yearlyEventQueue.length > 0 && !isEventActive) {
+        openNextQueuedEvent();
+    }
+
     console.log("[startTimers] 타이머 시작, currentSpeed:", currentSpeed);
 
     monthTimer = setInterval(() => {
@@ -560,6 +621,18 @@ function triggerMarriage(p) {
     for(let i=0; i<3; i++) {
         const candidateTraits = createRandomTraitSet();
         const c_visuals = getRandomVisuals(partnerGender);
+
+        // 소득 미리 배정 (임시 더미 객체)
+        const candidateJobDummy = {
+            isAlive: true, isMain: true,
+            age: p.age, careerStage: 'none',
+            jobCode: null, jobName: null, jobMonthlyIncomeKrw: 0, jobAssignedMonth: null
+        };
+        assignRandomCareerForLateJoiner(candidateJobDummy);
+        const candidateJobName = candidateJobDummy.jobName || '무직';
+        const candidateIncomeKrw = candidateJobDummy.jobMonthlyIncomeKrw || 0;
+        const candidateJobCode = candidateJobDummy.jobCode;
+
         const btn = document.createElement('button');
         btn.className = 'choice-btn marriage-choice-btn';
 
@@ -573,12 +646,18 @@ function triggerMarriage(p) {
         drawCandidatePreview(previewCanvas, c_visuals);
         previewWrap.appendChild(previewCanvas);
 
+        const incomeStr = formatKoreanMoneyUnits(candidateIncomeKrw);
+
         const info = document.createElement('div');
         info.className = 'marriage-choice-info';
         info.innerHTML = `
             <div class="marriage-choice-title">후보 ${i + 1}</div>
+            <div style="font-size:15.1px; margin-bottom:4px;">
+                ${candidateJobName} &nbsp;
+                <span style="color:#27ae60; font-weight:bold;">${incomeStr}/월</span>
+            </div>
             <div class="trait-box">
-                ${buildTraitsBlockHtml(candidateTraits, { valueLabel: '가치', showRepresentative: false })}
+                ${buildTraitsBlockHtml(candidateTraits, { valueLabel: '가치', showRepresentative: false, grid: true })}
             </div>`;
 
         layout.appendChild(previewWrap);
@@ -590,7 +669,12 @@ function triggerMarriage(p) {
             partner.isMarried = true; p.isMarried = true; p.partner = partner.id; partner.partner = p.id;
             partner.traits = candidateTraits;
             partner.visuals = c_visuals;
-            assignRandomCareerForLateJoiner(partner);
+            // 미리 배정된 직업 그대로 적용
+            if (candidateJobCode) {
+                setPersonJob(partner, candidateJobCode, globalMonths);
+            } else {
+                assignRandomCareerForLateJoiner(partner);
+            }
             nodes.push(partner);
             nodeMap.set(partner.id, partner);
             updateLayout(); updateUI(); closeEvent();
