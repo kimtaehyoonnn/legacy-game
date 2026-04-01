@@ -480,10 +480,20 @@ function runEventEngineSelfTests() {
         actionSeq: 1
     });
     applyEventResult({ type: 'set_job', jobCode: 'housekeeper' }, resultTestPerson, gameCtx);
+    const assetBefore = (typeof familyAssetKrw !== 'undefined') ? familyAssetKrw : 0;
+    applyEventResult({ type: 'asset_delta', amount: 1_000_000 }, resultTestPerson, gameCtx);
+    const assetDeltaPassed = (typeof familyAssetKrw === 'undefined') || familyAssetKrw === assetBefore + 1_000_000;
+    const multiTestPerson = { ...resultTestPerson, disease: null };
+    applyEventResult({ type: 'multi', results: [
+        { type: 'disease', disease: '몸살' }
+    ]}, multiTestPerson, gameCtx);
+    const multiPassed = multiTestPerson.disease === '몸살';
     const resultHandlersPassed = resultTestPerson.disease === '감기'
         && resultTestPerson.traits.per.scores.interpersonal.active === perBefore + 1
         && resultTestPerson.jobCode === 'housekeeper'
-        && resultTestPerson.careerStage === 'selected';
+        && resultTestPerson.careerStage === 'selected'
+        && assetDeltaPassed
+        && multiPassed;
 
     const allPassed = failedConditions.length === 0 && invalidEventErrors.length > 0 && resultHandlersPassed;
     if (allPassed) {
