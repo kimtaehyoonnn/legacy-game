@@ -175,9 +175,16 @@ function setPersonJob(person, jobCode, assignedMonth = globalMonths) {
         return;
     }
 
+    let incomeKrw = jobDef.monthlyIncomeKrw;
+    if (jobDef.incomeRandomRange) {
+        const { min, max, step } = jobDef.incomeRandomRange;
+        const steps = Math.floor((max - min) / step);
+        incomeKrw = min + Math.floor(Math.random() * (steps + 1)) * step;
+    }
+
     person.jobCode = jobCode;
     person.jobName = jobDef.name;
-    person.jobMonthlyIncomeKrw = jobDef.monthlyIncomeKrw;
+    person.jobMonthlyIncomeKrw = incomeKrw;
     person.jobAssignedMonth = Number.isFinite(assignedMonth) ? Math.floor(assignedMonth) : globalMonths;
     person.careerStage = 'selected';
 }
@@ -396,15 +403,25 @@ function initGame() {
     
     updateUI();
 
-    // 시작 즉시 1대 가주 직업 선택 이벤트 표시
-    const careerEventDef = (typeof GENERAL_EVENT_DEFINITIONS !== 'undefined')
-        ? GENERAL_EVENT_DEFINITIONS.find(e => e.code === 'career_initial_choice')
-        : null;
-    if (careerEventDef) {
-        ensureEventState(founder);
-        yearlyEventQueue.unshift({ personId: founder.id, eventDef: careerEventDef });
-        isEventActive = false;
-    }
+    // 시작 즉시 1대 가주 직업 선택 이벤트 표시 (랜덤 4개 직업)
+    const shuffledJobs = ALL_JOB_CODES
+        .filter(code => code !== 'student' && code !== 'housekeeper')
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 3);
+    const founderJobChoices = ['student', ...shuffledJobs].map(code => ({
+        id: code,
+        text: JOB_DEFINITIONS[code].name,
+        resultText: `${JOB_DEFINITIONS[code].name}(으)로 첫 발을 내딛습니다.`,
+        result: { type: 'set_job', jobCode: code }
+    }));
+    const founderCareerEventDef = {
+        code: 'career_initial_choice',
+        text: '첫 직업을 선택할 시기가 왔다.',
+        choices: founderJobChoices
+    };
+    ensureEventState(founder);
+    yearlyEventQueue.unshift({ personId: founder.id, eventDef: founderCareerEventDef });
+    isEventActive = false;
 
     // 속도 버튼 선택 후 타이머 시작
     const speedBtn = document.querySelectorAll('.speed-btn')[1];
@@ -622,16 +639,18 @@ function triggerMarriage(p) {
         const candidateTraits = createRandomTraitSet();
         const c_visuals = getRandomVisuals(partnerGender);
 
-        // 소득 미리 배정 (임시 더미 객체)
-        const candidateJobDummy = {
-            isAlive: true, isMain: true,
-            age: p.age, careerStage: 'none',
-            jobCode: null, jobName: null, jobMonthlyIncomeKrw: 0, jobAssignedMonth: null
-        };
-        assignRandomCareerForLateJoiner(candidateJobDummy);
-        const candidateJobName = candidateJobDummy.jobName || '무직';
-        const candidateIncomeKrw = candidateJobDummy.jobMonthlyIncomeKrw || 0;
-        const candidateJobCode = candidateJobDummy.jobCode;
+        // 직업 및 소득: JOB_DEFINITIONS에서 직접 선택
+        const candidateJobCode = getRandomJobCodeFromAllJobs();
+        const candidateJobDef = candidateJobCode ? JOB_DEFINITIONS[candidateJobCode] : null;
+        const candidateJobName = candidateJobDef?.name || '무직';
+        let candidateGrossKrw = candidateJobDef?.monthlyIncomeKrw ?? 0;
+        if (candidateJobDef?.incomeRandomRange) {
+            const { min, max, step } = candidateJobDef.incomeRandomRange;
+            const steps = Math.floor((max - min) / step);
+            candidateGrossKrw = min + Math.floor(Math.random() * (steps + 1)) * step;
+        }
+        const candidateExpenseKrw = getFixedMonthlyExpenseKrw(p.age);
+        const candidateNetKrw = candidateGrossKrw - candidateExpenseKrw;
 
         const btn = document.createElement('button');
         btn.className = 'choice-btn marriage-choice-btn';
@@ -646,7 +665,9 @@ function triggerMarriage(p) {
         drawCandidatePreview(previewCanvas, c_visuals);
         previewWrap.appendChild(previewCanvas);
 
-        const incomeStr = formatKoreanMoneyUnits(candidateIncomeKrw);
+        const netSign = candidateNetKrw >= 0 ? '+' : '';
+        const netColor = candidateNetKrw >= 0 ? '#27ae60' : '#e74c3c';
+        const incomeStr = `${netSign}${formatKoreanMoneyUnits(candidateNetKrw)}`;
 
         const info = document.createElement('div');
         info.className = 'marriage-choice-info';
@@ -654,7 +675,7 @@ function triggerMarriage(p) {
             <div class="marriage-choice-title">후보 ${i + 1}</div>
             <div style="font-size:15.1px; margin-bottom:4px;">
                 ${candidateJobName} &nbsp;
-                <span style="color:#27ae60; font-weight:bold;">${incomeStr}/월</span>
+                <span style="color:${netColor}; font-weight:bold;">${incomeStr}/월</span>
             </div>
             <div class="trait-box">
                 ${buildTraitsBlockHtml(candidateTraits, { valueLabel: '가치', showRepresentative: false, grid: true })}
@@ -669,9 +690,10 @@ function triggerMarriage(p) {
             partner.isMarried = true; p.isMarried = true; p.partner = partner.id; partner.partner = p.id;
             partner.traits = candidateTraits;
             partner.visuals = c_visuals;
-            // 미리 배정된 직업 그대로 적용
+            // 미리 배정된 직업 및 소득 그대로 적용
             if (candidateJobCode) {
                 setPersonJob(partner, candidateJobCode, globalMonths);
+                partner.jobMonthlyIncomeKrw = candidateGrossKrw; // 팝업에 표시된 값과 동일하게 고정
             } else {
                 assignRandomCareerForLateJoiner(partner);
             }
