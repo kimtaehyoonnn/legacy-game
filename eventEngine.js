@@ -1,6 +1,6 @@
 const EVENT_GROUP_OPS = new Set(['and', 'or']);
 const EVENT_LEAF_OPERATORS = new Set(['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in']);
-const EVENT_RESULT_TYPES = new Set(['none', 'disease', 'trait_delta', 'set_job']);
+const EVENT_RESULT_TYPES = new Set(['none', 'disease', 'trait_delta', 'set_job', 'asset_delta', 'multi']);
 
 const EVENT_RESULT_HANDLERS = {
     none: () => {},
@@ -18,6 +18,34 @@ const EVENT_RESULT_HANDLERS = {
     set_job: (result, person) => {
         if (!person || typeof result.jobCode !== 'string') return;
         setPersonJob(person, result.jobCode, globalMonths);
+    },
+    asset_delta: (result, person) => {
+        if (typeof result.amount !== 'number' || !Number.isFinite(result.amount)) return;
+        familyAssetKrw += result.amount;
+        const abs = Math.abs(result.amount);
+        let displayText;
+        if (abs >= 100_000_000) {
+            displayText = `${result.amount > 0 ? '+' : '-'}${Math.floor(abs / 100_000_000)}억원`;
+        } else if (abs >= 10_000) {
+            displayText = `${result.amount > 0 ? '+' : '-'}${Math.floor(abs / 10_000)}만원`;
+        } else {
+            displayText = `${result.amount > 0 ? '+' : '-'}${abs.toLocaleString('ko-KR')}원`;
+        }
+        if (person && typeof floatingTexts !== 'undefined') {
+            floatingTexts.push({
+                person: person,
+                offsetY: -30,
+                text: displayText,
+                color: result.amount > 0 ? '#f39c12' : '#c0392b',
+                alpha: 1
+            });
+        }
+    },
+    multi: (result, person, gameCtx) => {
+        if (!Array.isArray(result.results)) return;
+        for (const subResult of result.results) {
+            applyEventResult(subResult, person, gameCtx);
+        }
     }
 };
 
@@ -104,6 +132,23 @@ function validateChoiceResult(result, path, errors) {
             errors.push(`${path}.jobCode: '${result.jobCode}'는 지원되지 않는 직업 코드입니다.`);
         }
     }
+
+    if (result.type === 'asset_delta') {
+        if (!Object.prototype.hasOwnProperty.call(result, 'amount') ||
+            typeof result.amount !== 'number' || !Number.isFinite(result.amount)) {
+            errors.push(`${path}.amount: 유한한 숫자여야 합니다.`);
+        }
+    }
+
+    if (result.type === 'multi') {
+        if (!Array.isArray(result.results) || result.results.length === 0) {
+            errors.push(`${path}.results: 1개 이상의 결과 배열이어야 합니다.`);
+        } else {
+            result.results.forEach((subResult, i) => {
+                validateChoiceResult(subResult, `${path}.results[${i}]`, errors);
+            });
+        }
+    }
 }
 
 function validateEventChoice(choice, path, errors) {
@@ -186,6 +231,14 @@ function cloneConditionNode(node) {
     };
 }
 
+function cloneResult(result) {
+    if (!isPlainObject(result)) return result;
+    if (result.type === 'multi' && Array.isArray(result.results)) {
+        return { ...result, results: result.results.map(cloneResult) };
+    }
+    return { ...result };
+}
+
 function normalizeEventDefinitions(rawDefs) {
     if (!Array.isArray(rawDefs)) {
         console.error('[EVENT VALIDATION] GENERAL_EVENTS는 배열이어야 합니다.');
@@ -211,7 +264,7 @@ function normalizeEventDefinitions(rawDefs) {
                 id: choice.id,
                 text: choice.text,
                 resultText: choice.resultText || null,
-                result: { ...choice.result }
+                result: cloneResult(choice.result)
             }))
         });
     });
@@ -312,6 +365,15 @@ function applyEventResult(result, person, gameCtx) {
         return;
     }
     handler(result, person, gameCtx);
+}
+
+function extractAssetDeltaFromResult(result) {
+    if (!isPlainObject(result)) return 0;
+    if (result.type === 'asset_delta' && Number.isFinite(result.amount)) return result.amount;
+    if (result.type === 'multi' && Array.isArray(result.results)) {
+        return result.results.reduce((sum, sub) => sum + extractAssetDeltaFromResult(sub), 0);
+    }
+    return 0;
 }
 
 function applyEventChoice(person, eventDef, choiceId, gameCtx) {

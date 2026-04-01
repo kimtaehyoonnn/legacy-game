@@ -118,10 +118,10 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '서비스직에 도전한다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } },
-            { id: 'b', text: '야간 근무를 택한다.', result: { type: 'disease', disease: '감기' } },
-            { id: 'c', text: '적당히 경험만 쌓는다.', result: { type: 'none' } },
-            { id: 'd', text: '조건이 나빠 바로 그만둔다.', result: { type: 'trait_delta', trait: 'val', delta: -1 } }
+            { id: 'a', text: '서비스직에 도전한다.', resultText: '적극적인 서비스 정신으로 팁과 인센티브를 듬뿍 받았습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'per', delta: 1 }, { type: 'asset_delta', amount: 3_000_000 }] } },
+            { id: 'b', text: '야간 근무를 택한다.', resultText: '야간 수당이 쏠쏠하지만 무리한 탓에 몸이 상했습니다.', result: { type: 'multi', results: [{ type: 'disease', disease: '감기' }, { type: 'asset_delta', amount: 2_000_000 }] } },
+            { id: 'c', text: '적당히 경험만 쌓는다.', resultText: '소박하게 용돈벌이가 됐습니다.', result: { type: 'asset_delta', amount: 1_000_000 } },
+            { id: 'd', text: '조건이 나빠 바로 그만둔다.', resultText: '짧은 근무로 받은 급여가 교통비도 안 됩니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'val', delta: -1 }, { type: 'asset_delta', amount: -500_000 }] } }
         ]
     },
     {
@@ -136,10 +136,10 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '안정적인 회사를 고른다.', result: { type: 'trait_delta', trait: 'val', delta: 1 } },
-            { id: 'b', text: '도전적인 스타트업을 택한다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } },
-            { id: 'c', text: '입사 후 번아웃이 온다.', result: { type: 'disease', disease: '몸살' } },
-            { id: 'd', text: '일단 다녀보고 판단한다.', result: { type: 'none' } }
+            { id: 'a', text: '안정적인 회사를 고른다.', resultText: '입사 축하금과 초기 급여가 통장에 들어왔습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'val', delta: 1 }, { type: 'asset_delta', amount: 5_000_000 }] } },
+            { id: 'b', text: '도전적인 스타트업을 택한다.', resultText: '초봉은 낮지만 스톡옵션이 기대됩니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'per', delta: 1 }, { type: 'asset_delta', amount: 2_000_000 }] } },
+            { id: 'c', text: '입사 후 번아웃이 온다.', resultText: '병원비와 약값이 만만치 않습니다.', result: { type: 'multi', results: [{ type: 'disease', disease: '몸살' }, { type: 'asset_delta', amount: -2_000_000 }] } },
+            { id: 'd', text: '일단 다녀보고 판단한다.', resultText: '평범하게 첫 월급을 받았습니다.', result: { type: 'asset_delta', amount: 3_000_000 } }
         ]
     },
     {
@@ -154,10 +154,10 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '정식으로 문제를 제기한다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } },
+            { id: 'a', text: '정식으로 문제를 제기한다.', resultText: '노동청 신고 끝에 합의금을 받아냈습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'per', delta: 1 }, { type: 'asset_delta', amount: 5_000_000 }] } },
             { id: 'b', text: '당분간 참고 버틴다.', result: { type: 'trait_delta', trait: 'val', delta: -1 } },
-            { id: 'c', text: '즉시 이직을 준비한다.', result: { type: 'trait_delta', trait: 'val', delta: 1 } },
-            { id: 'd', text: '스트레스로 몸살이 난다.', result: { type: 'disease', disease: '몸살' } }
+            { id: 'c', text: '즉시 이직을 준비한다.', resultText: '이직 공백기 동안 생활비가 줄었습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'val', delta: 1 }, { type: 'asset_delta', amount: -2_000_000 }] } },
+            { id: 'd', text: '스트레스로 몸살이 난다.', resultText: '병원 신세를 지며 돈도 나갔습니다.', result: { type: 'multi', results: [{ type: 'disease', disease: '몸살' }, { type: 'asset_delta', amount: -3_000_000 }] } }
         ]
     },
     {
@@ -172,10 +172,10 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '콘텐츠 활동을 본격화한다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } },
-            { id: 'b', text: '관심이 부담되어 숨는다.', result: { type: 'trait_delta', trait: 'per', delta: -1 } },
-            { id: 'c', text: '반응을 차분히 관찰한다.', result: { type: 'none' } },
-            { id: 'd', text: '무리하게 달리다 지친다.', result: { type: 'disease', disease: '감기' } }
+            { id: 'a', text: '콘텐츠 활동을 본격화한다.', resultText: '광고 협찬과 후원이 쇄도했습니다!', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'per', delta: 1 }, { type: 'asset_delta', amount: 20_000_000 }] } },
+            { id: 'b', text: '관심이 부담되어 숨는다.', resultText: '잠깐의 바이럴로 광고 수익이 조금 들어왔습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'per', delta: -1 }, { type: 'asset_delta', amount: 5_000_000 }] } },
+            { id: 'c', text: '반응을 차분히 관찰한다.', resultText: '조용히 수익화해서 용돈을 챙겼습니다.', result: { type: 'asset_delta', amount: 5_000_000 } },
+            { id: 'd', text: '무리하게 달리다 지친다.', resultText: '장비 구입과 병원비로 오히려 적자입니다.', result: { type: 'multi', results: [{ type: 'disease', disease: '감기' }, { type: 'asset_delta', amount: -1_000_000 }] } }
         ]
     },
     {
@@ -202,10 +202,10 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '한 장만 산다.', result: { type: 'none' } },
-            { id: 'b', text: '여러 장을 산다.', result: { type: 'trait_delta', trait: 'val', delta: -1 } },
-            { id: 'c', text: '자동 번호로 산다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } },
-            { id: 'd', text: '안 사고 지나간다.', result: { type: 'trait_delta', trait: 'val', delta: 1 } }
+            { id: 'a', text: '한 장만 산다.', resultText: '꽝입니다. 복권값만 날렸습니다.', result: { type: 'asset_delta', amount: -10_000 } },
+            { id: 'b', text: '여러 장을 산다.', resultText: '전부 꽝... 거금을 날렸습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'val', delta: -1 }, { type: 'asset_delta', amount: -500_000 }] } },
+            { id: 'c', text: '자동 번호로 산다.', resultText: '1등 당첨! 인생역전의 그날이 왔습니다!!', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'per', delta: 1 }, { type: 'asset_delta', amount: 1_000_000_000 }] } },
+            { id: 'd', text: '안 사고 지나간다.', resultText: '절약 정신이 확실합니다.', result: { type: 'trait_delta', trait: 'val', delta: 1 } }
         ]
     },
     {
@@ -220,9 +220,9 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '혼자 조용한 여행을 떠난다.', result: { type: 'trait_delta', trait: 'val', delta: 1 } },
-            { id: 'b', text: '빡빡한 일정으로 여행한다.', result: { type: 'disease', disease: '감기' } },
-            { id: 'c', text: '가까운 근교만 다녀온다.', result: { type: 'none' } },
+            { id: 'a', text: '혼자 조용한 여행을 떠난다.', resultText: '느긋한 여행이었지만 숙박비가 꽤 들었습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'val', delta: 1 }, { type: 'asset_delta', amount: -3_000_000 }] } },
+            { id: 'b', text: '빡빡한 일정으로 여행한다.', resultText: '여행 경비를 펑펑 쓰다 몸까지 상했습니다.', result: { type: 'multi', results: [{ type: 'disease', disease: '감기' }, { type: 'asset_delta', amount: -5_000_000 }] } },
+            { id: 'c', text: '가까운 근교만 다녀온다.', resultText: '알뜰 여행으로 교통비만 조금 썼습니다.', result: { type: 'asset_delta', amount: -1_000_000 } },
             { id: 'd', text: '여행 대신 휴식을 택한다.', result: { type: 'trait_delta', trait: 'hlt', delta: 1 } }
         ]
     },
@@ -334,9 +334,9 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '작은 땅을 신중히 산다.', result: { type: 'trait_delta', trait: 'val', delta: 1 } },
-            { id: 'b', text: '무리하게 큰 계약을 한다.', result: { type: 'trait_delta', trait: 'val', delta: -1 } },
-            { id: 'c', text: '가족과 공동명의로 산다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } },
+            { id: 'a', text: '작은 땅을 신중히 산다.', resultText: '알뜰한 투자로 알짜배기 토지를 마련했습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'val', delta: 1 }, { type: 'asset_delta', amount: -50_000_000 }] } },
+            { id: 'b', text: '무리하게 큰 계약을 한다.', resultText: '빚을 내서 무리한 계약을 맺었습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'val', delta: -1 }, { type: 'asset_delta', amount: -200_000_000 }] } },
+            { id: 'c', text: '가족과 공동명의로 산다.', resultText: '가족과 부담을 나눠 합리적으로 구매했습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'per', delta: 1 }, { type: 'asset_delta', amount: -30_000_000 }] } },
             { id: 'd', text: '마음만 먹고 보류한다.', result: { type: 'none' } }
         ]
     },

@@ -210,14 +210,23 @@ function openNextQueuedEvent() {
             btn.textContent = choice.text;
             btn.onclick = () => {
                 traitUserActionSeq += 1;
+                const assetDelta = extractAssetDeltaFromResult(choice.result);
                 applyEventChoice(person, queued.eventDef, choice.id, {
                     ...buildGameContext(),
                     isUserChoice: true,
                     actionSeq: traitUserActionSeq
                 });
 
-                const resultText = choice.resultText || getResultDescription(choice.result);
-                document.getElementById('e-desc').innerText = resultText;
+                const baseText = choice.resultText || getResultDescription(choice.result);
+                const eDesc = document.getElementById('e-desc');
+                if (assetDelta !== 0) {
+                    const sign = assetDelta > 0 ? '+' : '-';
+                    const color = assetDelta > 0 ? '#27ae60' : '#e74c3c';
+                    const amountStr = formatKoreanMoneyUnits(Math.abs(assetDelta));
+                    eDesc.innerHTML = `${baseText}<br><span style="color:${color}; font-weight:bold;">자산 ${sign}${amountStr}</span>`;
+                } else {
+                    eDesc.innerText = baseText;
+                }
 
                 const cont = document.getElementById('choices-container');
                 cont.innerHTML = '';
