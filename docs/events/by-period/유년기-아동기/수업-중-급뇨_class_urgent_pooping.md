@@ -21,16 +21,14 @@
 
 - `wet` / `바지에 지린다.`
   - `resultText`: `반 친구들이 모두 보고 말았습니다. 대참사가 발생했습니다.`
-  - `result`: `trait_delta(trait='per', delta=-2)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='per', delta=-2`가 기록되어 있다.
+  - `result`: `multi([trait_delta(domain='per', attribute='interpersonal', traitType='active', delta=-1), trait_delta(domain='per', attribute='emotional', traitType='rich', delta=-1)])`
 - `hold` / `용기를 내서 참아본다.`
   - `resultText`: `간신히 참아냈습니다.`
   - `result`: `none`
   - 실제 `result`는 `none`이며, 즉시 바뀌는 상태값은 없다.
 - `drip` / `조금씩 내보내며 버틴다.`
   - `resultText`: `조절에 실패했습니다. 대참사가 발생했습니다.`
-  - `result`: `trait_delta(trait='per', delta=-1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='per', delta=-1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='per', attribute='emotional', traitType='rich', delta=-1)`
 
 ## 후속 연결
 

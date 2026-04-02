@@ -70,7 +70,8 @@
 - 동점 상황에서는 최근 사용자 선택 순서(`lastUserChangeSeqByType`)와 이번 액션에서 바뀐 타입이 우선권을 가진다.
 - 출생 시에는 `createInheritedCoreTraits()`로 부모의 성격/가치관/건강이 상속된다.
 - 상태창, 출산 팝업, 결혼 후보 카드 모두 같은 표시 헬퍼를 공유한다.
-- 현재 이벤트 데이터의 `trait_delta`는 축약형(`trait`, `delta`) 중심으로 작성돼 있지만, trait 엔진 자체는 `domain`, `attribute`, `traitType` 기반의 세분화된 payload를 처리하도록 설계돼 있다.
+- 현재 이벤트 데이터의 `trait_delta`는 `per/val/hlt`에 대해 `domain`, `attribute`, `traitType`, `delta` 세분화 payload를 사용한다.
+- 외모(`app`)만 레거시 호환을 위해 `trait`, `delta` 형식을 유지한다.
 
 ## 핵심 운영 포인트
 

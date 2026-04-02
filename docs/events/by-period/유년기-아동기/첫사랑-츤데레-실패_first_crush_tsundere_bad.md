@@ -22,8 +22,7 @@
 
 - `chaos` / `그녀의 관심을 끌기 위해 소란을 피운다.`
   - `resultText`: `학폭위원회에 소집되었습니다. 큰 사고를 쳤습니다.`
-  - `result`: `trait_delta(trait='val', delta=-2)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=-2`가 기록되어 있다.
+  - `result`: `multi([trait_delta(domain='val', attribute='morality', traitType='principle', delta=-1), trait_delta(domain='val', attribute='relation', traitType='fairness', delta=-1)])`
 - `quiet` / `그저 조용히 있는다.`
   - `resultText`: `누구에게나 그런 날은 있는 법이죠.`
   - `result`: `none`

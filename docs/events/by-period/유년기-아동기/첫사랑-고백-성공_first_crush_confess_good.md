@@ -22,8 +22,7 @@
 
 - `ok` / `짝꿍과 연인이 되었습니다!`
   - `resultText`: `짝꿍과 연인이 되었습니다! 첫사랑이 이루어지는 순간입니다.`
-  - `result`: `trait_delta(trait='per', delta=1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='per', delta=1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='per', attribute='emotional', traitType='direct', delta=1)`
 
 ## 후속 연결
 

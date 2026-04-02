@@ -21,17 +21,14 @@
 
 - `a` / `정식으로 문제를 제기한다.`
   - `resultText`: `노동청 신고 끝에 합의금을 받아냈습니다.`
-  - `result`: `multi([trait_delta(trait='per', delta=1), asset_delta(amount=5000000)])`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='per', delta=1`이 기록되어 있다.
+  - `result`: `multi([trait_delta(domain='per', attribute='conflict', traitType='negotiation', delta=1), asset_delta(amount=5000000)])`
   - `asset_delta(amount=5000000)`으로 자산이 `500만원` 증가한다.
 - `b` / `당분간 참고 버틴다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='val', delta=-1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=-1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='val', attribute='morality', traitType='principle', delta=-1)`
 - `c` / `즉시 이직을 준비한다.`
   - `resultText`: `이직 공백기 동안 생활비가 줄었습니다.`
-  - `result`: `multi([trait_delta(trait='val', delta=1), asset_delta(amount=-2000000)])`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=1`이 기록되어 있다.
+  - `result`: `multi([trait_delta(domain='val', attribute='goal', traitType='growth', delta=1), asset_delta(amount=-2000000)])`
   - `asset_delta(amount=-2000000)`으로 자산이 `200만원` 감소한다.
 - `d` / `스트레스로 몸살이 난다.`
   - `resultText`: `병원 신세를 지며 돈도 나갔습니다.`

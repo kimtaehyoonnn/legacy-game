@@ -20,20 +20,17 @@
 
 - `a` / `지난 삶을 천천히 돌아본다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='val', delta=1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='val', attribute='morality', traitType='emotion', delta=1)`
 - `b` / `앞으로 할 일을 정리한다.`
   - `resultText`는 없다.
   - `result`: `none`
   - 실제 `result`는 `none`이며, 즉시 바뀌는 상태값은 없다.
 - `c` / `살짝 우울해진다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='per', delta=-1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='per', delta=-1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='per', attribute='emotional', traitType='rich', delta=-1)`
 - `d` / `산책을 시작한다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='hlt', delta=1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='hlt', delta=1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='hlt', attribute='fitness', traitType='strong', delta=1)`
 
 ## 후속 연결
 

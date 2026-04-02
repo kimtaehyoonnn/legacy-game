@@ -21,18 +21,15 @@
 
 - `a` / `작은 땅을 신중히 산다.`
   - `resultText`: `알뜰한 투자로 알짜배기 토지를 마련했습니다.`
-  - `result`: `multi([trait_delta(trait='val', delta=1), asset_delta(amount=-50000000)])`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=1`이 기록되어 있다.
+  - `result`: `multi([trait_delta(domain='val', attribute='goal', traitType='stability', delta=1), asset_delta(amount=-50000000)])`
   - `asset_delta(amount=-50000000)`으로 자산이 `5000만원` 감소한다.
 - `b` / `무리하게 큰 계약을 한다.`
   - `resultText`: `빚을 내서 무리한 계약을 맺었습니다.`
-  - `result`: `multi([trait_delta(trait='val', delta=-1), asset_delta(amount=-200000000)])`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=-1`이 기록되어 있다.
+  - `result`: `multi([trait_delta(domain='val', attribute='risk', traitType='low', delta=-1), asset_delta(amount=-200000000)])`
   - `asset_delta(amount=-200000000)`으로 자산이 `2억원` 감소한다.
 - `c` / `가족과 공동명의로 산다.`
   - `resultText`: `가족과 부담을 나눠 합리적으로 구매했습니다.`
-  - `result`: `multi([trait_delta(trait='per', delta=1), asset_delta(amount=-30000000)])`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='per', delta=1`이 기록되어 있다.
+  - `result`: `multi([trait_delta(domain='per', attribute='conflict', traitType='negotiation', delta=1), asset_delta(amount=-30000000)])`
   - `asset_delta(amount=-30000000)`으로 자산이 `3000만원` 감소한다.
 - `d` / `마음만 먹고 보류한다.`
   - `resultText`는 없다.

@@ -29,8 +29,7 @@
   - 실제 `result`는 `none`이며, 즉시 바뀌는 상태값은 없다.
 - `boo` / `다른 친구들의 공연을 보며 야유한다.`
   - `resultText`: `모두가 당신에게 돌을 던집니다. 건강 -1, 매력 -5`
-  - `result`: `trait_delta(trait='per', delta=-2)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='per', delta=-2`가 기록되어 있다.
+  - `result`: `multi([trait_delta(domain='per', attribute='interpersonal', traitType='active', delta=-1), trait_delta(domain='per', attribute='conflict', traitType='negotiation', delta=-1)])`
 - 모든 선택지는 적용 후 `eventState.choiceByCode.talent_show_17`에 선택한 `id`가 저장된다.
 
 ## 후속 연결

@@ -20,8 +20,7 @@
 
 - `a` / `서비스직에 도전한다.`
   - `resultText`: `적극적인 서비스 정신으로 팁과 인센티브를 듬뿍 받았습니다.`
-  - `result`: `multi([trait_delta(trait='per', delta=1), asset_delta(amount=3000000)])`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='per', delta=1`이 기록되어 있다.
+  - `result`: `multi([trait_delta(domain='per', attribute='interpersonal', traitType='active', delta=1), asset_delta(amount=3000000)])`
   - `asset_delta(amount=3000000)`으로 자산이 `300만원` 증가한다.
 - `b` / `야간 근무를 택한다.`
   - `resultText`: `야간 수당이 쏠쏠하지만 무리한 탓에 몸이 상했습니다.`
@@ -34,8 +33,7 @@
   - `asset_delta(amount=1000000)`으로 자산이 `100만원` 증가한다.
 - `d` / `조건이 나빠 바로 그만둔다.`
   - `resultText`: `짧은 근무로 받은 급여가 교통비도 안 됩니다.`
-  - `result`: `multi([trait_delta(trait='val', delta=-1), asset_delta(amount=-500000)])`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=-1`이 기록되어 있다.
+  - `result`: `multi([trait_delta(domain='val', attribute='goal', traitType='stability', delta=-1), asset_delta(amount=-500000)])`
   - `asset_delta(amount=-500000)`으로 자산이 `50만원` 감소한다.
 
 ## 후속 연결

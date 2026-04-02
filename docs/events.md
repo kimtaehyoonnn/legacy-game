@@ -54,6 +54,18 @@
 - `asset_delta`
 - `multi`
 
+### trait_delta payload 규칙
+
+- `per`, `val`, `hlt` 도메인의 `trait_delta`는 아래 세분화 형태만 사용한다.
+
+```js
+{ type: 'trait_delta', domain: 'per|val|hlt', attribute: '...', traitType: '...', delta: number }
+```
+
+- 기존 축약형 `trait='per|val|hlt', delta=...`는 더 이상 사용하지 않는다.
+- `app`(외모)만 레거시 호환을 위해 `trait='app', delta=...` 형식을 유지한다.
+- 이벤트별 실제 세분화 payload는 `docs/events/by-period/`의 개별 이벤트 문서에 직접 기록한다.
+
 ### 발화 규칙
 
 - 평가 대상은 `isAlive && isMain` 캐릭터뿐이다.
@@ -68,4 +80,5 @@
 - 위 두 진로 이벤트는 `events.js`의 고정 `choices`를 그대로 노출하지 않고, `JOB_DEFINITIONS[*].appearanceCondition` 기반으로 런타임 동적 선택지를 사용한다.
 - 경제 변동성이 큰 이벤트는 `viral_sns_post`, `buy_lottery_ticket`, `buy_land`다.
 - 대표 체인 문서는 `첫사랑`, `가출`, `장기자랑` 세 축이다.
-- 현재 이벤트 데이터의 `trait_delta`는 축약형 중심이지만, trait 엔진은 세분화 payload도 처리할 수 있다.
+- 현재 이벤트 데이터의 `trait_delta`는 `per/val/hlt` 기준 세분화 payload를 사용한다.
+- 시기별 개별 문서가 서사/흐름과 실제 payload를 함께 담는 정본이다.

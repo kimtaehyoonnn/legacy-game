@@ -22,8 +22,7 @@
 
 - `ok` / `짝꿍이 당신을 역겨워합니다.`
   - `resultText`: `짝꿍이 당신을 역겨워합니다. 거절당했습니다.`
-  - `result`: `trait_delta(trait='per', delta=-1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='per', delta=-1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='per', attribute='emotional', traitType='direct', delta=-1)`
 
 ## 후속 연결
 

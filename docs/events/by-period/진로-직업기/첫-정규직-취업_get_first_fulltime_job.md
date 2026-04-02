@@ -21,13 +21,11 @@
 
 - `a` / `안정적인 회사를 고른다.`
   - `resultText`: `입사 축하금과 초기 급여가 통장에 들어왔습니다.`
-  - `result`: `multi([trait_delta(trait='val', delta=1), asset_delta(amount=5000000)])`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=1`이 기록되어 있다.
+  - `result`: `multi([trait_delta(domain='val', attribute='goal', traitType='stability', delta=1), asset_delta(amount=5000000)])`
   - `asset_delta(amount=5000000)`으로 자산이 `500만원` 증가한다.
 - `b` / `도전적인 스타트업을 택한다.`
   - `resultText`: `초봉은 낮지만 스톡옵션이 기대됩니다.`
-  - `result`: `multi([trait_delta(trait='per', delta=1), asset_delta(amount=2000000)])`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='per', delta=1`이 기록되어 있다.
+  - `result`: `multi([trait_delta(domain='per', attribute='conflict', traitType='breakthrough', delta=1), asset_delta(amount=2000000)])`
   - `asset_delta(amount=2000000)`으로 자산이 `200만원` 증가한다.
 - `c` / `입사 후 번아웃이 온다.`
   - `resultText`: `병원비와 약값이 만만치 않습니다.`

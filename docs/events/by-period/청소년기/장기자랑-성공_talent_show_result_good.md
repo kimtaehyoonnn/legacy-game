@@ -23,7 +23,6 @@
 - `ok` / `모두의 이목을 끌었습니다! 당신은 인기인!`
   - `resultText`: `모두의 이목을 끌었습니다! 당신은 인기인!`
   - `result`: `trait_delta(trait='app', delta=1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='app', delta=1`이 기록되어 있다.
 
 ## 후속 연결
 

@@ -21,16 +21,13 @@
 
 - `obey` / `부모님께 순종한다.`
   - `resultText`: `당신은 착한 아이입니다.`
-  - `result`: `trait_delta(trait='per', delta=1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='per', delta=1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='per', attribute='selfManagement', traitType='diligent', delta=1)`
 - `dyehair` / `반항하기 위해 머리를 물들인다.`
   - `resultText`: `염색에 실패해 학교에서 놀림을 받습니다. 매력이 떨어집니다.`
   - `result`: `trait_delta(trait='app', delta=-2)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='app', delta=-2`가 기록되어 있다.
 - `runaway` / `가출한다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='hlt', delta=-1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='hlt', delta=-1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='hlt', attribute='fitness', traitType='strong', delta=-1)`
 - 모든 선택지는 적용 후 `eventState.choiceByCode.middle_school_chuunibyou`에 선택한 `id`가 저장된다.
 
 ## 후속 연결

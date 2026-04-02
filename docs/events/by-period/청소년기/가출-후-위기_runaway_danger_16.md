@@ -25,12 +25,10 @@
   - `disease='혼절'`로 변경된다.
 - `reject` / `그건 안돼!! 집으로 돌아간다.`
   - `resultText`: `당신은 방황 끝에 집에 무사히 도착했습니다.\n지능 +2, 건강 -1`
-  - `result`: `trait_delta(trait='val', delta=2)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=2`가 기록되어 있다.
+  - `result`: `multi([trait_delta(domain='val', attribute='priority', traitType='family', delta=1), trait_delta(domain='val', attribute='goal', traitType='stability', delta=1)])`
 - `gangster` / `나쁜 패거리와 어울린다.`
   - `resultText`: `친구들이 집에는 돌아가라고 하네요.\n지능 -1, 매력 +2`
-  - `result`: `trait_delta(trait='val', delta=-1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=-1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='val', attribute='relation', traitType='fairness', delta=-1)`
 
 ## 후속 연결
 

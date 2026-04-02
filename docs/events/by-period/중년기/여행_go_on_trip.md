@@ -21,8 +21,7 @@
 
 - `a` / `혼자 조용한 여행을 떠난다.`
   - `resultText`: `느긋한 여행이었지만 숙박비가 꽤 들었습니다.`
-  - `result`: `multi([trait_delta(trait='val', delta=1), asset_delta(amount=-3000000)])`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=1`이 기록되어 있다.
+  - `result`: `multi([trait_delta(domain='val', attribute='goal', traitType='joy', delta=1), asset_delta(amount=-3000000)])`
   - `asset_delta(amount=-3000000)`으로 자산이 `300만원` 감소한다.
 - `b` / `빡빡한 일정으로 여행한다.`
   - `resultText`: `여행 경비를 펑펑 쓰다 몸까지 상했습니다.`
@@ -35,8 +34,7 @@
   - `asset_delta(amount=-1000000)`으로 자산이 `100만원` 감소한다.
 - `d` / `여행 대신 휴식을 택한다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='hlt', delta=1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='hlt', delta=1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='hlt', attribute='stress', traitType='high', delta=1)`
 
 ## 후속 연결
 

@@ -22,8 +22,7 @@
 
 - `ok` / `당신의 흑역사가 인터넷에 영원히 박제되었습니다.`
   - `resultText`: `당신의 흑역사가 인터넷에 영원히 박제되었습니다.`
-  - `result`: `trait_delta(trait='per', delta=-1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='per', delta=-1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='per', attribute='emotional', traitType='rich', delta=-1)`
 
 ## 후속 연결
 

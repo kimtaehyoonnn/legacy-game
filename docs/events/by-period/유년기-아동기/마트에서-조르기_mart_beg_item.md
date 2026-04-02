@@ -21,12 +21,10 @@
 
 - `strict` / `엄하게 혼낸다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='per', delta=1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='per', delta=1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='per', attribute='selfManagement', traitType='diligent', delta=1)`
 - `spoil` / `아이의 요구를 들어준다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='val', delta=-1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=-1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='val', attribute='goal', traitType='stability', delta=-1)`
 
 ## 후속 연결
 

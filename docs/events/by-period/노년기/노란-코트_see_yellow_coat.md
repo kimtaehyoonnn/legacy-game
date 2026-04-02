@@ -21,16 +21,14 @@
 
 - `a` / `추억을 떠올리며 구매한다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='per', delta=1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='per', delta=1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='per', attribute='emotional', traitType='rich', delta=1)`
 - `b` / `지나가듯 보고 웃는다.`
   - `resultText`는 없다.
   - `result`: `none`
   - 실제 `result`는 `none`이며, 즉시 바뀌는 상태값은 없다.
 - `c` / `충동구매 후 후회한다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='val', delta=-1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=-1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='val', attribute='risk', traitType='low', delta=-1)`
 - `d` / `옷보다 건강부터 챙긴다.`
   - `resultText`는 없다.
   - `result`: `disease(disease=null)`

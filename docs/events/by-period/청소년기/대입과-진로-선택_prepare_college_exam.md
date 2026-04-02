@@ -33,8 +33,7 @@
   - 실제 `result`는 `none`이며, 즉시 바뀌는 상태값은 없다.
 - `neet` / `아직은 백수가 좋아.`
   - `resultText`: `당신은 불효자의 길을 걷습니다!`
-  - `result`: `trait_delta(trait='val', delta=-2)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=-2`가 기록되어 있다.
+  - `result`: `multi([trait_delta(domain='val', attribute='goal', traitType='growth', delta=-1), trait_delta(domain='val', attribute='priority', traitType='family', delta=-1)])`
 
 ## 후속 연결
 

@@ -25,18 +25,15 @@
   - `asset_delta(amount=-10000)`으로 자산이 `1만원` 감소한다.
 - `b` / `여러 장을 산다.`
   - `resultText`: `전부 꽝... 거금을 날렸습니다.`
-  - `result`: `multi([trait_delta(trait='val', delta=-1), asset_delta(amount=-500000)])`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=-1`이 기록되어 있다.
+  - `result`: `multi([trait_delta(domain='val', attribute='risk', traitType='low', delta=-1), asset_delta(amount=-500000)])`
   - `asset_delta(amount=-500000)`으로 자산이 `50만원` 감소한다.
 - `c` / `자동 번호로 산다.`
   - `resultText`: `1등 당첨! 인생역전의 그날이 왔습니다!!`
-  - `result`: `multi([trait_delta(trait='per', delta=1), asset_delta(amount=1000000000)])`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='per', delta=1`이 기록되어 있다.
+  - `result`: `multi([trait_delta(domain='per', attribute='conflict', traitType='breakthrough', delta=1), asset_delta(amount=1000000000)])`
   - `asset_delta(amount=1000000000)`으로 자산이 `10억원` 증가한다.
 - `d` / `안 사고 지나간다.`
   - `resultText`: `절약 정신이 확실합니다.`
-  - `result`: `trait_delta(trait='val', delta=1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='val', attribute='risk', traitType='low', delta=1)`
 
 ## 후속 연결
 

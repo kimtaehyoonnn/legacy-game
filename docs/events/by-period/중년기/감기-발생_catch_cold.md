@@ -33,8 +33,7 @@
   - `disease='몸살'`로 변경된다.
 - `d` / `체력을 키우기 시작한다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='hlt', delta=1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='hlt', delta=1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='hlt', attribute='fitness', traitType='strong', delta=1)`
 
 ## 후속 연결
 

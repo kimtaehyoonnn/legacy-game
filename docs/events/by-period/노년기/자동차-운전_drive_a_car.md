@@ -21,8 +21,7 @@
 
 - `a` / `안전 운전을 최우선으로 한다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='val', delta=1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='val', attribute='risk', traitType='low', delta=1)`
 - `b` / `장거리 운전을 강행한다.`
   - `resultText`는 없다.
   - `result`: `disease(disease='몸살')`
@@ -33,8 +32,7 @@
   - 실제 `result`는 `none`이며, 즉시 바뀌는 상태값은 없다.
 - `d` / `운전을 그만두고 대중교통을 탄다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='per', delta=1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='per', delta=1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='per', attribute='behavior', traitType='planned', delta=1)`
 
 ## 후속 연결
 

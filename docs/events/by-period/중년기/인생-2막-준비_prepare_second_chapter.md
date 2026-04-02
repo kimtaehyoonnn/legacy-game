@@ -20,20 +20,17 @@
 
 - `a` / `새로운 공부를 시작한다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='val', delta=1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='val', attribute='goal', traitType='growth', delta=1)`
 - `b` / `건강 루틴을 만든다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='hlt', delta=1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='hlt', delta=1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='hlt', attribute='recovery', traitType='fast', delta=1)`
 - `c` / `현 상태를 유지한다.`
   - `resultText`는 없다.
   - `result`: `none`
   - 실제 `result`는 `none`이며, 즉시 바뀌는 상태값은 없다.
 - `d` / `변화를 미루고 불안해한다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='per', delta=-1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='per', delta=-1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='per', attribute='behavior', traitType='planned', delta=-1)`
 
 ## 후속 연결
 

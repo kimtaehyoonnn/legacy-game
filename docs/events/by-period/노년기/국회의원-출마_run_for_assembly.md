@@ -21,16 +21,13 @@
 
 - `a` / `정책 중심으로 선거를 치른다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='val', delta=1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='val', delta=1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='val', attribute='morality', traitType='principle', delta=1)`
 - `b` / `공격적인 선거전을 펼친다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='per', delta=-1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='per', delta=-1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='per', attribute='conflict', traitType='negotiation', delta=-1)`
 - `c` / `건강을 우선해 사퇴한다.`
   - `resultText`는 없다.
-  - `result`: `trait_delta(trait='hlt', delta=1)`
-  - `trait_delta`는 이벤트 정의의 축약형 payload 그대로 `trait='hlt', delta=1`이 기록되어 있다.
+  - `result`: `trait_delta(domain='hlt', attribute='stress', traitType='high', delta=1)`
 - `d` / `상징적으로만 도전한다.`
   - `resultText`는 없다.
   - `result`: `none`
