@@ -138,6 +138,96 @@ function getRandomJobCodeFromAllJobs() {
     return ALL_JOB_CODES[Math.floor(Math.random() * ALL_JOB_CODES.length)];
 }
 
+function shuffleArray(values) {
+    const copied = [...values];
+    for (let i = copied.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copied[i], copied[j]] = [copied[j], copied[i]];
+    }
+    return copied;
+}
+
+function evaluateJobAppearanceCondition(person, condition, gameCtx = null) {
+    if (!condition) return true;
+    if (typeof evaluateCondition !== 'function') return true;
+
+    try {
+        const personCtx = (typeof buildPersonConditionContext === 'function')
+            ? buildPersonConditionContext(person)
+            : person;
+        const effectiveGameCtx = gameCtx || (
+            typeof buildGameContext === 'function'
+                ? buildGameContext()
+                : { globalMonths, year: Math.floor(globalMonths / 12) }
+        );
+        return !!evaluateCondition(condition, personCtx, effectiveGameCtx);
+    } catch (e) {
+        console.warn('[CAREER] 직업 조건 평가 실패:', e);
+        return false;
+    }
+}
+
+function getEligibleJobCodesForPerson(person, options = {}) {
+    const includeStudent = options.includeStudent === true;
+    const excluded = new Set(Array.isArray(options.excludeJobCodes) ? options.excludeJobCodes : []);
+    if (!includeStudent) excluded.add('student');
+
+    const gameCtx = options.gameCtx || null;
+    const candidates = [];
+    for (let i = 0; i < ALL_JOB_CODES.length; i++) {
+        const code = ALL_JOB_CODES[i];
+        if (excluded.has(code)) continue;
+        const jobDef = JOB_DEFINITIONS[code];
+        if (!jobDef) continue;
+        if (!evaluateJobAppearanceCondition(person, jobDef.appearanceCondition, gameCtx)) continue;
+        candidates.push(code);
+    }
+    return candidates;
+}
+
+function buildJobChoicesFromCodes(jobCodes) {
+    return jobCodes
+        .filter(code => !!JOB_DEFINITIONS[code])
+        .map(code => ({
+            id: code,
+            text: JOB_DEFINITIONS[code].name,
+            resultText: `${JOB_DEFINITIONS[code].name}(으)로 첫 발을 내딛습니다.`,
+            result: { type: 'set_job', jobCode: code }
+        }));
+}
+
+function buildCareerInitialChoices(person, gameCtx = null) {
+    const eligibleJobs = getEligibleJobCodesForPerson(person, {
+        includeStudent: false,
+        gameCtx
+    });
+    const picked = shuffleArray(eligibleJobs).slice(0, 3);
+    return buildJobChoicesFromCodes(['student', ...picked]);
+}
+
+function buildCareerPostStudentChoices(person, gameCtx = null) {
+    const eligibleJobs = getEligibleJobCodesForPerson(person, {
+        includeStudent: false,
+        gameCtx
+    });
+    let picked = shuffleArray(eligibleJobs).slice(0, 4);
+    if (picked.length === 0 && JOB_DEFINITIONS.housekeeper) {
+        picked = ['housekeeper'];
+    }
+    return buildJobChoicesFromCodes(picked);
+}
+
+function resolveEventChoicesForPerson(person, eventDef, gameCtx = null) {
+    if (!eventDef || !eventDef.code) return [];
+    if (eventDef.code === 'career_initial_choice') {
+        return buildCareerInitialChoices(person, gameCtx);
+    }
+    if (eventDef.code === 'career_post_student_choice') {
+        return buildCareerPostStudentChoices(person, gameCtx);
+    }
+    return (eventDef.choices || []).slice(0, 4);
+}
+
 function assignRandomCareerForLateJoiner(person) {
     if (!person || !person.isAlive || !person.isMain) return;
 
@@ -190,7 +280,10 @@ function openNextQueuedEvent() {
         document.getElementById('e-title').innerText = "인생 이벤트";
         document.getElementById('e-desc').innerText = `${person.name}(${person.age}세): ${queued.eventDef.text}`;
 
-        const choices = (queued.eventDef.choices || []).slice(0, 4);
+        const dynamicChoices = resolveEventChoicesForPerson(person, queued.eventDef, buildGameContext());
+        if (!dynamicChoices.length) continue;
+        const eventDefForApply = { ...queued.eventDef, choices: dynamicChoices };
+        const choices = eventDefForApply.choices;
         choices.forEach(choice => {
             const btn = document.createElement('button');
             btn.className = 'choice-btn';
@@ -198,7 +291,7 @@ function openNextQueuedEvent() {
             btn.onclick = () => {
                 traitUserActionSeq += 1;
                 const assetDelta = extractAssetDeltaFromResult(choice.result);
-                applyEventChoice(person, queued.eventDef, choice.id, {
+                applyEventChoice(person, eventDefForApply, choice.id, {
                     ...buildGameContext(),
                     isUserChoice: true,
                     actionSeq: traitUserActionSeq
@@ -374,17 +467,8 @@ function initGame() {
     
     updateUI();
 
-    // 시작 즉시 1대 가주 직업 선택 이벤트 표시 (랜덤 4개 직업)
-    const shuffledJobs = ALL_JOB_CODES
-        .filter(code => code !== 'student' && code !== 'housekeeper')
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 3);
-    const founderJobChoices = ['student', ...shuffledJobs].map(code => ({
-        id: code,
-        text: JOB_DEFINITIONS[code].name,
-        resultText: `${JOB_DEFINITIONS[code].name}(으)로 첫 발을 내딛습니다.`,
-        result: { type: 'set_job', jobCode: code }
-    }));
+    // 시작 즉시 1대 가주 직업 선택 이벤트 표시 (학생 고정 + 조건 기반 최대 4개)
+    const founderJobChoices = buildCareerInitialChoices(founder, buildGameContext());
     const founderCareerEventDef = {
         code: 'career_initial_choice',
         text: '첫 직업을 선택할 시기가 왔다.',
