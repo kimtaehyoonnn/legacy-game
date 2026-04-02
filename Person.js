@@ -89,6 +89,45 @@ function getNodeTraitText(trait) {
     return trait.name || '미정';
 }
 
+function createZeroDomainTrait(domainKey, fallbackName = '미정') {
+    const trait = {
+        domainKey,
+        tier: 'N',
+        name: fallbackName,
+        scores: {},
+        representatives: {},
+        representativeLabels: {},
+        fallbackRepresentative: null,
+        lastUserChangeSeqByType: {}
+    };
+
+    try {
+        if (typeof getDomainTraitSchema !== 'function') return trait;
+        const schema = getDomainTraitSchema(domainKey);
+        if (!schema || !Array.isArray(schema.attributes)) return trait;
+
+        schema.attributes.forEach(attributeDef => {
+            const types = Array.isArray(attributeDef.types) ? attributeDef.types : [];
+            trait.scores[attributeDef.key] = {};
+
+            types.forEach(typeDef => {
+                trait.scores[attributeDef.key][typeDef.key] = 0;
+            });
+
+            // 동점(0점) 초기 상태에서는 'normal' 타입이 있으면 우선 대표값으로 사용한다.
+            const representativeType = types.find(typeDef => typeDef.key === 'normal') || types[0];
+            if (representativeType) {
+                trait.representatives[attributeDef.key] = representativeType.key;
+                trait.representativeLabels[attributeDef.key] = representativeType.label || representativeType.key;
+            }
+        });
+    } catch (e) {
+        console.warn('[Warning] 기본 도메인 특성 초기화 실패:', e);
+    }
+
+    return trait;
+}
+
 class PersonNode {
     constructor(name, gender, x, y, level, age = 0, parents = [], isHead = false, isMain = true, isSpouse = false) {
         this.id = nextId++; 
@@ -124,14 +163,14 @@ class PersonNode {
         this.jobAssignedMonth = null;
         this.careerStage = 'none';
         
-        // 💡 null 에러 방지를 위해 기본값 설정
+        // 💡 null 에러 방지 + 도메인 실데이터와 유사한 0점 기본 구조
         this.traits = { 
             app: { tier: 'N', name: '평범한 외모' }, 
-            per: { tier: 'N', name: '평범한 성격' }, 
-            val: { tier: 'N', name: '현실주의' }, 
-            hlt: { tier: 'N', name: '평범한 체력' } 
+            per: createZeroDomainTrait('per', '평범한 성격'),
+            val: createZeroDomainTrait('val', '현실주의'),
+            hlt: createZeroDomainTrait('hlt', '평범한 체력')
         };
-                this.visuals = { eyes: 'EA', nose: 'NA', mouth: 'MA', face: 'Fa', frontHair: null, clothes: 'CA', shoulder: 'SA' };
+        this.visuals = { eyes: 'EA', nose: 'NA', mouth: 'MA', face: 'Fa', frontHair: null, clothes: 'CA', shoulder: 'SA' };
     }
 
     draw(ctx, scale = 1) {
