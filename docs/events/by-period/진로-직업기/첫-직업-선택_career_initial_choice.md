@@ -19,22 +19,11 @@
 
 ## 선택지와 결과
 
-- `housekeeper` / `하우스키퍼`
-  - `resultText`는 없다.
-  - `result`: `set_job(jobCode='housekeeper')`
-  - 런타임에서 `jobCode='housekeeper'`, `jobName='하우스키퍼'`, `jobMonthlyIncomeKrw=0`, `jobAssignedMonth`, `careerStage='selected'`가 갱신된다.
-- `student` / `학생`
-  - `resultText`는 없다.
-  - `result`: `set_job(jobCode='student')`
-  - 런타임에서 `jobCode='student'`, `jobName='학생'`, `jobMonthlyIncomeKrw=-500000`, `jobAssignedMonth`, `careerStage='selected'`가 갱신된다.
-- `delivery_rider` / `배달기사`
-  - `resultText`는 없다.
-  - `result`: `set_job(jobCode='delivery_rider')`
-  - 런타임에서 `jobCode='delivery_rider'`, `jobName='배달기사'`, `jobMonthlyIncomeKrw=3500000`, `jobAssignedMonth`, `careerStage='selected'`가 갱신된다.
-- `musician` / `음악가`
-  - `resultText`는 없다.
-  - `result`: `set_job(jobCode='musician')`
-  - 런타임에서 `jobCode='musician'`, `jobName='음악가'`, `jobMonthlyIncomeKrw=500000`, `jobAssignedMonth`, `careerStage='selected'`가 갱신된다.
+- 선택지는 런타임에서 동적으로 생성된다.
+- `student`는 항상 고정 포함된다.
+- `student`를 제외한 직업 중 `JOB_DEFINITIONS[code].appearanceCondition`을 통과한 후보를 최대 3개까지 추가한다.
+- 총 선택지 수는 `1~4개`다.
+- 어떤 직업을 고르든 결과 타입은 `set_job(jobCode='<선택한 code>')`이며, 런타임에서 `jobCode`, `jobName`, `jobMonthlyIncomeKrw`, `jobAssignedMonth`, `careerStage='selected'`가 갱신된다.
 
 ## 후속 연결
 
@@ -45,8 +34,8 @@
 
 ## 운영 메모
 
-- 일반 정의는 고정 4개 선택지지만, 실제 게임 시작 직후 1대 가주는 커스텀된 첫 직업 선택지를 받는다.
-- 운영상 첫 직업 분포를 볼 때는 일반 정의와 시작 예외를 함께 봐야 한다.
+- 일반 이벤트 정의(`events.js`)에 기본 `choices`가 있어도, 실제 팝업 노출 시점에는 사람의 성격/가치관 조건을 기준으로 선택지를 재구성한다.
+- 게임 시작 직후 1대 가주도 같은 동적 직업 선택 규칙을 사용한다.
 
 ## 관련 문서
 

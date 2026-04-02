@@ -29,7 +29,7 @@
 
 아래 파일들이 문서 내용의 기준이 된다.
 
-- `jobDefinitions.js`: 직업 코드, 이름, 기본 월수입, 랜덤 수입 범위
+- `jobDefinitions.js`: 직업 코드, 이름, 기본 월수입, 랜덤 수입 범위, 진로 노출 조건(`appearanceCondition`)
 - `events.js`: 일반 이벤트 30개 정의
 - `eventEngine.js`: 이벤트 검증, 정규화, 조건 평가, 결과 적용, 이벤트 상태 기록
 - `traitsData.js`: 성격/가치관/건강 도메인 특성 스키마, 타이틀 규칙, 해석 로직
@@ -80,5 +80,6 @@
 - 이벤트는 사람별 `firedCodes`에 기록되므로, 같은 코드의 이벤트는 한 번만 발화한다.
 - 후속 이벤트는 `eventState.choiceByCode`에 저장된 과거 선택값을 조건으로 참조한다.
 - `career_initial_choice`는 일반 정의도 존재하지만, 게임 시작 직후 1대 가주에게는 별도 커스텀 이벤트가 큐에 우선 삽입된다.
+- `career_initial_choice`, `career_post_student_choice`의 실제 선택지는 사람별 특성(`traits.per/val`)과 직업 조건(`appearanceCondition`)으로 런타임에 다시 계산된다.
 - 이벤트 상세 정본은 모두 `docs/events/by-period/` 아래에 두고, `docs/events/chains/`는 체인 설명과 링크 허브로만 사용한다.
 - 운영 문서 기준 총량은 `직업 21개`, `이벤트 30개`, 핵심 도메인 특성 문서 `3개`다.

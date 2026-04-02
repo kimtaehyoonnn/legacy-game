@@ -65,6 +65,7 @@
 ## 운영 포인트
 
 - 확정 진로 이벤트는 `career_initial_choice`, `career_post_student_choice` 두 개다.
+- 위 두 진로 이벤트는 `events.js`의 고정 `choices`를 그대로 노출하지 않고, `JOB_DEFINITIONS[*].appearanceCondition` 기반으로 런타임 동적 선택지를 사용한다.
 - 경제 변동성이 큰 이벤트는 `viral_sns_post`, `buy_lottery_ticket`, `buy_land`다.
 - 대표 체인 문서는 `첫사랑`, `가출`, `장기자랑` 세 축이다.
 - 현재 이벤트 데이터의 `trait_delta`는 축약형 중심이지만, trait 엔진은 세분화 payload도 처리할 수 있다.

@@ -5,6 +5,8 @@
 현 프로젝트의 직업 시스템은 `JOB_DEFINITIONS`를 기준으로 움직인다.  
 직업은 캐릭터별 월수입과 커리어 상태를 결정하고, 월 자산 정산에서 연령별 고정지출과 합산된다.
 
+최근 변경으로 `career_initial_choice`, `career_post_student_choice`의 선택지는 고정 목록이 아니라, 캐릭터의 성격/가치관 특성에 따라 동적으로 구성된다.
+
 ## 데이터 구조
 
 ### 직업 정의 스키마
@@ -18,10 +20,25 @@
       min: 숫자,
       max: 숫자,
       step: 숫자
-    } // 선택 필드
+    }, // 선택 필드
+    appearanceCondition: {
+      // 선택 필드, 이벤트 조건 DSL 재사용
+      // 예: { target, field, operator, value }
+      // 예: { op: 'and'|'or', conditions: [...] }
+    }
   }
 }
 ```
+
+### `appearanceCondition` 해석 규칙
+
+- `eventEngine.js`의 조건 DSL(`eq`, `gte`, `in`, `and`, `or` 등)을 그대로 사용한다.
+- 조건 미지정 직업은 항상 진로 선택 후보가 될 수 있다.
+- 조건에서 참조 가능한 대표 경로:
+- `traits.per.representatives.*`
+- `traits.val.representatives.*`
+- `traits.per.scores.*.*`
+- `traits.val.scores.*.*`
 
 ### 캐릭터 직업 상태 필드
 
@@ -40,7 +57,17 @@
 - `incomeRandomRange`가 있으면 `monthlyIncomeKrw` 대신 랜덤 월수입을 굴린다.
 - `retirePersonJob(person)`은 직업과 월수입을 비우고 `careerStage`를 `retired`로 바꾼다.
 - `assignRandomCareerForLateJoiner(person)`는 `isAlive && isMain`이며, `20세 이상 64세 이하`이고 `careerStage === 'none'`인 캐릭터에게 전체 직업군 중 하나를 랜덤 배정한다.
-- `career_post_student_choice` 이벤트는 `student` 배정 후 `60개월`이 지나야 발화 가능하다.
+
+### 동적 진로 선택 규칙
+
+- `career_initial_choice`
+- `student`는 항상 포함된다.
+- `student` 제외 직업 중 `appearanceCondition`을 통과한 후보를 섞어 최대 3개를 추가한다.
+- 총 선택지는 `1~4개` 범위다.
+- `career_post_student_choice`
+- `student`는 후보에서 제외된다.
+- 조건 통과 직업을 최대 4개 노출한다.
+- 조건 통과 직업이 0개면 `housekeeper` 1개를 fallback으로 제공한다.
 
 ## 수입/지출 반영 규칙
 
@@ -53,43 +80,36 @@
 - `70세 이상`: `100만원`
 - 최종 월 자산 변화는 `직업 월수입 - 연령별 고정지출`이며, 모든 `isAlive && isMain` 가족 구성원의 합계가 가문 자산에 더해진다.
 
+## 직업 목록
+
+| code | 이름 | 기본 월수입 | 랜덤 수입 | `appearanceCondition` |
+| --- | --- | ---: | --- | --- |
+| `housekeeper` | 하우스키퍼 | 0원 | 없음 | 없음 |
+| `student` | 학생 | -50만원 | 없음 | 없음 |
+| `delivery_rider` | 배달기사 | 350만원 | 없음 | 없음 |
+| `musician` | 음악가 | 50만원 | 없음 | `per.emotional=artistic` 또는 `val.goal=joy` |
+| `highschool_teacher` | 고등학교 선생 | 300만원 | 없음 | 없음 |
+| `lawyer` | 변호사 | 600만원 | 없음 | `val.morality=principle` AND `per.selfManagement=diligent` |
+| `corporate_employee` | 대기업 사원 | 500만원 | 없음 | 없음 |
+| `convenience_part` | 편의점 알바 | 120만원 | 없음 | 없음 |
+| `barista` | 카페 바리스타 | 180만원 | 없음 | 없음 |
+| `nurse` | 간호사 | 300만원 | 없음 | 없음 |
+| `doctor` | 의사 | 1,000만원 | 없음 | `per.scores.selfManagement.diligent>=4` AND `val.scores.goal.growth>=3` |
+| `programmer` | 프로그래머 | 550만원 | 없음 | `per.behavior in [planned, balanced]` AND `val.scores.goal.growth>=3` |
+| `designer` | 디자이너 | 300만원 | 없음 | 없음 |
+| `youtuber` | 유튜버 | 0원 | `0원~1,000만원`, 10만원 단위 | 없음 |
+| `civil_servant` | 공무원 | 280만원 | 없음 | `val.goal=stability` AND `per.behavior=planned` |
+| `police` | 경찰 | 320만원 | 없음 | `val.priority=nation` 또는 `per.conflict=competitive` |
+| `firefighter` | 소방관 | 320만원 | 없음 | `per.conflict=breakthrough` 또는 `per.scores.selfManagement.diligent>=4` |
+| `taxi_driver` | 택시기사 | 250만원 | 없음 | 없음 |
+| `construction` | 건설 노동자 | 350만원 | 없음 | 없음 |
+| `farmer` | 농부 | 200만원 | 없음 | 없음 |
+| `sme_employee` | 중소기업 사원 | 260만원 | 없음 | 없음 |
+
 ## 운영 메모
 
 - `student`는 월수입이 `-50만원`이라서 실질적으로 교육비/생활비를 뜻한다.
 - `youtuber`는 유일한 랜덤 수입 직업이다. 범위는 `0원 ~ 1,000만원`, `10만원` 단위다.
-- 게임 시작 직후 1대 가주는 일반 이벤트 정의를 그대로 쓰지 않고, `student + (student/housekeeper 제외 랜덤 3개)` 조합의 커스텀 첫 직업 선택지를 받는다.
-- 결혼 후보 생성 시에도 전체 직업군에서 랜덤 직업이 미리 뽑혀 표시된다.
+- 1대 가주 시작 이벤트도 동일한 동적 진로 선택 로직을 사용한다.
+- 결혼 후보 생성과 후발 주인공 랜덤 직업 배정은 현재 `appearanceCondition`을 사용하지 않고 전체 직업군 랜덤을 유지한다.
 - 65세 이상은 매월 업데이트 중 `retirePersonJob()` 대상이 된다.
-
-## 직업 목록
-
-| code | 이름 | 기본 월수입 | 랜덤 수입 여부 | 진입 경로 | 운영 메모 |
-| --- | --- | ---: | --- | --- | --- |
-| `housekeeper` | 하우스키퍼 | 0원 | 없음 | `career_initial_choice`, `career_post_student_choice`, 후발 주인공 랜덤 | 시작 가주 전용 커스텀 첫 선택지에서는 제외된다. |
-| `student` | 학생 | -50만원 | 없음 | 시작 가주 커스텀 첫 선택지, `career_initial_choice`, `prepare_college_exam`, 후발 주인공 랜덤 | 유일한 음수 월수입 직업. 대학 진학 상태를 직업처럼 표현한다. |
-| `delivery_rider` | 배달기사 | 350만원 | 없음 | `career_initial_choice`, 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | 초반 진입 직업군 중 하나다. |
-| `musician` | 음악가 | 50만원 | 없음 | `career_initial_choice`, 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | 직업명은 전문직 느낌이지만 수입은 매우 낮다. |
-| `highschool_teacher` | 고등학교 선생 | 300만원 | 없음 | `career_post_student_choice`, 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | 학생 이후 진로 이벤트에서 직접 연결된다. |
-| `lawyer` | 변호사 | 600만원 | 없음 | `career_post_student_choice`, 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | 학생 이후 진로 이벤트에서 직접 연결되는 상위 수입 직업이다. |
-| `corporate_employee` | 대기업 사원 | 500만원 | 없음 | `career_post_student_choice`, 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | 학생 이후 진로 이벤트에서 직접 연결된다. |
-| `convenience_part` | 편의점 알바 | 120만원 | 없음 | 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | 직접 연결 이벤트는 없고 랜덤 유입 중심이다. |
-| `barista` | 카페 바리스타 | 180만원 | 없음 | 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | 생활형 저중수입 직업군이다. |
-| `nurse` | 간호사 | 300만원 | 없음 | 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | 안정권 월수입 직업군이다. |
-| `doctor` | 의사 | 1,000만원 | 없음 | 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | 최고 수입 직업이다. |
-| `programmer` | 프로그래머 | 550만원 | 없음 | 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | 상위권 월수입 직업군이다. |
-| `designer` | 디자이너 | 300만원 | 없음 | 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | 안정권 월수입 직업군이다. |
-| `youtuber` | 유튜버 | 0원 | `0원~1,000만원`, 10만원 단위 | 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | 랜덤성이 매우 커서 운영상 분산이 큰 직업이다. |
-| `civil_servant` | 공무원 | 280만원 | 없음 | 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | 평균적인 안정형 직업군이다. |
-| `police` | 경찰 | 320만원 | 없음 | 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | 중간 이상 수입의 현장직이다. |
-| `firefighter` | 소방관 | 320만원 | 없음 | 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | `police`와 같은 수입대다. |
-| `taxi_driver` | 택시기사 | 250만원 | 없음 | 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | 20대 후반부터는 지출을 감안하면 체감 순이익이 낮다. |
-| `construction` | 건설 노동자 | 350만원 | 없음 | 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | 수입은 괜찮지만 이벤트상 건강 리스크와 조합될 수 있다. |
-| `farmer` | 농부 | 200만원 | 없음 | 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | 저중수입 직업군이다. |
-| `sme_employee` | 중소기업 사원 | 260만원 | 없음 | 시작 가주 랜덤 3종 후보, 후발 주인공 랜덤, 결혼 후보 랜덤 | 평균 이하 안정형 직업군이다. |
-
-## 운영 체크 포인트
-
-- 고정 수입 기준 상위 직업은 `doctor`, `lawyer`, `programmer`, `corporate_employee`다.
-- `student`와 `housekeeper`는 초반 또는 전환기 서사용 직업 역할이 강하다.
-- 무작위 유입 비중이 높아서, 이벤트로 직접 연결되는 직업은 일부에 불과하다.
-- 후속 진로 이벤트가 학생 루트에만 존재하므로, `student`의 체류 기간 `60개월`은 플레이 감각에 큰 영향을 준다.

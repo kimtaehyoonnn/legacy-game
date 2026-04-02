@@ -17,4 +17,5 @@
 ## 운영 포인트
 
 - `career_initial_choice`, `career_post_student_choice`는 확정 진로 이벤트다.
+- 두 이벤트의 실제 선택지는 고정 배열이 아니라, 직업별 `appearanceCondition`과 캐릭터의 성격/가치관 특성으로 런타임 동적 구성된다.
 - 경제와 질병, 성향 변화가 동시에 일어나는 복합 이벤트 비중이 높다.
