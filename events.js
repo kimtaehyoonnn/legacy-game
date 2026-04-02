@@ -46,8 +46,8 @@ const GENERAL_EVENTS = [
         probability: 0.95,
         condition: { target: 'person', field: 'age', operator: 'eq', value: 5 },
         choices: [
-            { id: 'strict', text: '엄하게 혼낸다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } },
-            { id: 'spoil',  text: '아이의 요구를 들어준다.', result: { type: 'trait_delta', trait: 'val', delta: -1 } }
+            { id: 'strict', text: '엄하게 혼낸다.', result: { type: 'trait_delta', domain: 'per', attribute: 'selfManagement', traitType: 'diligent', delta: 1 } },
+            { id: 'spoil',  text: '아이의 요구를 들어준다.', result: { type: 'trait_delta', domain: 'val', attribute: 'goal', traitType: 'stability', delta: -1 } }
         ]
     },
     {
@@ -56,9 +56,9 @@ const GENERAL_EVENTS = [
         probability: 0.8,
         condition: { target: 'person', field: 'age', operator: 'eq', value: 8 },
         choices: [
-            { id: 'wet',  text: '바지에 지린다.',        resultText: '반 친구들이 모두 보고 말았습니다. 대참사가 발생했습니다.',    result: { type: 'trait_delta', trait: 'per', delta: -2 } },
+            { id: 'wet',  text: '바지에 지린다.',        resultText: '반 친구들이 모두 보고 말았습니다. 대참사가 발생했습니다.',    result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'per', attribute: 'interpersonal', traitType: 'active', delta: -1 }, { type: 'trait_delta', domain: 'per', attribute: 'emotional', traitType: 'rich', delta: -1 }] } },
             { id: 'hold', text: '용기를 내서 참아본다.', resultText: '간신히 참아냈습니다.',                                            result: { type: 'none' } },
-            { id: 'drip', text: '조금씩 내보내며 버틴다.', resultText: '조절에 실패했습니다. 대참사가 발생했습니다.',                  result: { type: 'trait_delta', trait: 'per', delta: -1 } }
+            { id: 'drip', text: '조금씩 내보내며 버틴다.', resultText: '조절에 실패했습니다. 대참사가 발생했습니다.',                  result: { type: 'trait_delta', domain: 'per', attribute: 'emotional', traitType: 'rich', delta: -1 } }
         ]
     },
     {
@@ -83,9 +83,9 @@ const GENERAL_EVENTS = [
         probability: 0.95,
         condition: { target: 'person', field: 'age', operator: 'eq', value: 15 },
         choices: [
-            { id: 'obey',    text: '부모님께 순종한다.',           resultText: '당신은 착한 아이입니다.',                                result: { type: 'trait_delta', trait: 'per', delta: 1 } },
+            { id: 'obey',    text: '부모님께 순종한다.',           resultText: '당신은 착한 아이입니다.',                                result: { type: 'trait_delta', domain: 'per', attribute: 'selfManagement', traitType: 'diligent', delta: 1 } },
             { id: 'dyehair', text: '반항하기 위해 머리를 물들인다.', resultText: '염색에 실패해 학교에서 놀림을 받습니다. 매력이 떨어집니다.', result: { type: 'trait_delta', trait: 'app', delta: -2 } },
-            { id: 'runaway', text: '가출한다.',                    result: { type: 'trait_delta', trait: 'hlt', delta: -1 } }
+            { id: 'runaway', text: '가출한다.',                    result: { type: 'trait_delta', domain: 'hlt', attribute: 'fitness', traitType: 'strong', delta: -1 } }
         ]
     },
     {
@@ -97,7 +97,7 @@ const GENERAL_EVENTS = [
             { id: 'elite',  text: '명문 대학교로 진학한다.', resultText: '명문 대학교에 입학했습니다.',               result: { type: 'set_job', jobCode: 'student' } },
             { id: 'normal', text: '일반 대학교로 진학한다.', resultText: '대학교에 입학했습니다.',                   result: { type: 'set_job', jobCode: 'student' } },
             { id: 'work',   text: '취직에 나선다.',           resultText: '좋은 직장을 얻길 바랍니다!',             result: { type: 'none' } },
-            { id: 'neet',   text: '아직은 백수가 좋아.',       resultText: '당신은 불효자의 길을 걷습니다!',         result: { type: 'trait_delta', trait: 'val', delta: -2 } }
+            { id: 'neet',   text: '아직은 백수가 좋아.',       resultText: '당신은 불효자의 길을 걷습니다!',         result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'val', attribute: 'goal', traitType: 'growth', delta: -1 }, { type: 'trait_delta', domain: 'val', attribute: 'priority', traitType: 'family', delta: -1 }] } }
         ]
     },
     {
@@ -118,10 +118,10 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '서비스직에 도전한다.', resultText: '적극적인 서비스 정신으로 팁과 인센티브를 듬뿍 받았습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'per', delta: 1 }, { type: 'asset_delta', amount: 3_000_000 }] } },
+            { id: 'a', text: '서비스직에 도전한다.', resultText: '적극적인 서비스 정신으로 팁과 인센티브를 듬뿍 받았습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'per', attribute: 'interpersonal', traitType: 'active', delta: 1 }, { type: 'asset_delta', amount: 3_000_000 }] } },
             { id: 'b', text: '야간 근무를 택한다.', resultText: '야간 수당이 쏠쏠하지만 무리한 탓에 몸이 상했습니다.', result: { type: 'multi', results: [{ type: 'disease', disease: '감기' }, { type: 'asset_delta', amount: 2_000_000 }] } },
             { id: 'c', text: '적당히 경험만 쌓는다.', resultText: '소박하게 용돈벌이가 됐습니다.', result: { type: 'asset_delta', amount: 1_000_000 } },
-            { id: 'd', text: '조건이 나빠 바로 그만둔다.', resultText: '짧은 근무로 받은 급여가 교통비도 안 됩니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'val', delta: -1 }, { type: 'asset_delta', amount: -500_000 }] } }
+            { id: 'd', text: '조건이 나빠 바로 그만둔다.', resultText: '짧은 근무로 받은 급여가 교통비도 안 됩니다.', result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'val', attribute: 'goal', traitType: 'stability', delta: -1 }, { type: 'asset_delta', amount: -500_000 }] } }
         ]
     },
     {
@@ -136,8 +136,8 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '안정적인 회사를 고른다.', resultText: '입사 축하금과 초기 급여가 통장에 들어왔습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'val', delta: 1 }, { type: 'asset_delta', amount: 5_000_000 }] } },
-            { id: 'b', text: '도전적인 스타트업을 택한다.', resultText: '초봉은 낮지만 스톡옵션이 기대됩니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'per', delta: 1 }, { type: 'asset_delta', amount: 2_000_000 }] } },
+            { id: 'a', text: '안정적인 회사를 고른다.', resultText: '입사 축하금과 초기 급여가 통장에 들어왔습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'val', attribute: 'goal', traitType: 'stability', delta: 1 }, { type: 'asset_delta', amount: 5_000_000 }] } },
+            { id: 'b', text: '도전적인 스타트업을 택한다.', resultText: '초봉은 낮지만 스톡옵션이 기대됩니다.', result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'per', attribute: 'conflict', traitType: 'breakthrough', delta: 1 }, { type: 'asset_delta', amount: 2_000_000 }] } },
             { id: 'c', text: '입사 후 번아웃이 온다.', resultText: '병원비와 약값이 만만치 않습니다.', result: { type: 'multi', results: [{ type: 'disease', disease: '몸살' }, { type: 'asset_delta', amount: -2_000_000 }] } },
             { id: 'd', text: '일단 다녀보고 판단한다.', resultText: '평범하게 첫 월급을 받았습니다.', result: { type: 'asset_delta', amount: 3_000_000 } }
         ]
@@ -154,9 +154,9 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '정식으로 문제를 제기한다.', resultText: '노동청 신고 끝에 합의금을 받아냈습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'per', delta: 1 }, { type: 'asset_delta', amount: 5_000_000 }] } },
-            { id: 'b', text: '당분간 참고 버틴다.', result: { type: 'trait_delta', trait: 'val', delta: -1 } },
-            { id: 'c', text: '즉시 이직을 준비한다.', resultText: '이직 공백기 동안 생활비가 줄었습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'val', delta: 1 }, { type: 'asset_delta', amount: -2_000_000 }] } },
+            { id: 'a', text: '정식으로 문제를 제기한다.', resultText: '노동청 신고 끝에 합의금을 받아냈습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'per', attribute: 'conflict', traitType: 'negotiation', delta: 1 }, { type: 'asset_delta', amount: 5_000_000 }] } },
+            { id: 'b', text: '당분간 참고 버틴다.', result: { type: 'trait_delta', domain: 'val', attribute: 'morality', traitType: 'principle', delta: -1 } },
+            { id: 'c', text: '즉시 이직을 준비한다.', resultText: '이직 공백기 동안 생활비가 줄었습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'val', attribute: 'goal', traitType: 'growth', delta: 1 }, { type: 'asset_delta', amount: -2_000_000 }] } },
             { id: 'd', text: '스트레스로 몸살이 난다.', resultText: '병원 신세를 지며 돈도 나갔습니다.', result: { type: 'multi', results: [{ type: 'disease', disease: '몸살' }, { type: 'asset_delta', amount: -3_000_000 }] } }
         ]
     },
@@ -172,8 +172,8 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '콘텐츠 활동을 본격화한다.', resultText: '광고 협찬과 후원이 쇄도했습니다!', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'per', delta: 1 }, { type: 'asset_delta', amount: 20_000_000 }] } },
-            { id: 'b', text: '관심이 부담되어 숨는다.', resultText: '잠깐의 바이럴로 광고 수익이 조금 들어왔습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'per', delta: -1 }, { type: 'asset_delta', amount: 5_000_000 }] } },
+            { id: 'a', text: '콘텐츠 활동을 본격화한다.', resultText: '광고 협찬과 후원이 쇄도했습니다!', result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'per', attribute: 'interpersonal', traitType: 'active', delta: 1 }, { type: 'asset_delta', amount: 20_000_000 }] } },
+            { id: 'b', text: '관심이 부담되어 숨는다.', resultText: '잠깐의 바이럴로 광고 수익이 조금 들어왔습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'per', attribute: 'interpersonal', traitType: 'active', delta: -1 }, { type: 'asset_delta', amount: 5_000_000 }] } },
             { id: 'c', text: '반응을 차분히 관찰한다.', resultText: '조용히 수익화해서 용돈을 챙겼습니다.', result: { type: 'asset_delta', amount: 5_000_000 } },
             { id: 'd', text: '무리하게 달리다 지친다.', resultText: '장비 구입과 병원비로 오히려 적자입니다.', result: { type: 'multi', results: [{ type: 'disease', disease: '감기' }, { type: 'asset_delta', amount: -1_000_000 }] } }
         ]
@@ -184,10 +184,10 @@ const GENERAL_EVENTS = [
         probability: 0.65,
         condition: { target: 'person', field: 'age', operator: 'eq', value: 44 },
         choices: [
-            { id: 'a', text: '새로운 공부를 시작한다.', result: { type: 'trait_delta', trait: 'val', delta: 1 } },
-            { id: 'b', text: '건강 루틴을 만든다.', result: { type: 'trait_delta', trait: 'hlt', delta: 1 } },
+            { id: 'a', text: '새로운 공부를 시작한다.', result: { type: 'trait_delta', domain: 'val', attribute: 'goal', traitType: 'growth', delta: 1 } },
+            { id: 'b', text: '건강 루틴을 만든다.', result: { type: 'trait_delta', domain: 'hlt', attribute: 'recovery', traitType: 'fast', delta: 1 } },
             { id: 'c', text: '현 상태를 유지한다.', result: { type: 'none' } },
-            { id: 'd', text: '변화를 미루고 불안해한다.', result: { type: 'trait_delta', trait: 'per', delta: -1 } }
+            { id: 'd', text: '변화를 미루고 불안해한다.', result: { type: 'trait_delta', domain: 'per', attribute: 'behavior', traitType: 'planned', delta: -1 } }
         ]
     },
     {
@@ -203,9 +203,9 @@ const GENERAL_EVENTS = [
         },
         choices: [
             { id: 'a', text: '한 장만 산다.', resultText: '꽝입니다. 복권값만 날렸습니다.', result: { type: 'asset_delta', amount: -10_000 } },
-            { id: 'b', text: '여러 장을 산다.', resultText: '전부 꽝... 거금을 날렸습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'val', delta: -1 }, { type: 'asset_delta', amount: -500_000 }] } },
-            { id: 'c', text: '자동 번호로 산다.', resultText: '1등 당첨! 인생역전의 그날이 왔습니다!!', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'per', delta: 1 }, { type: 'asset_delta', amount: 1_000_000_000 }] } },
-            { id: 'd', text: '안 사고 지나간다.', resultText: '절약 정신이 확실합니다.', result: { type: 'trait_delta', trait: 'val', delta: 1 } }
+            { id: 'b', text: '여러 장을 산다.', resultText: '전부 꽝... 거금을 날렸습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'val', attribute: 'risk', traitType: 'low', delta: -1 }, { type: 'asset_delta', amount: -500_000 }] } },
+            { id: 'c', text: '자동 번호로 산다.', resultText: '1등 당첨! 인생역전의 그날이 왔습니다!!', result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'per', attribute: 'conflict', traitType: 'breakthrough', delta: 1 }, { type: 'asset_delta', amount: 1_000_000_000 }] } },
+            { id: 'd', text: '안 사고 지나간다.', resultText: '절약 정신이 확실합니다.', result: { type: 'trait_delta', domain: 'val', attribute: 'risk', traitType: 'low', delta: 1 } }
         ]
     },
     {
@@ -220,10 +220,10 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '혼자 조용한 여행을 떠난다.', resultText: '느긋한 여행이었지만 숙박비가 꽤 들었습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'val', delta: 1 }, { type: 'asset_delta', amount: -3_000_000 }] } },
+            { id: 'a', text: '혼자 조용한 여행을 떠난다.', resultText: '느긋한 여행이었지만 숙박비가 꽤 들었습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'val', attribute: 'goal', traitType: 'joy', delta: 1 }, { type: 'asset_delta', amount: -3_000_000 }] } },
             { id: 'b', text: '빡빡한 일정으로 여행한다.', resultText: '여행 경비를 펑펑 쓰다 몸까지 상했습니다.', result: { type: 'multi', results: [{ type: 'disease', disease: '감기' }, { type: 'asset_delta', amount: -5_000_000 }] } },
             { id: 'c', text: '가까운 근교만 다녀온다.', resultText: '알뜰 여행으로 교통비만 조금 썼습니다.', result: { type: 'asset_delta', amount: -1_000_000 } },
-            { id: 'd', text: '여행 대신 휴식을 택한다.', result: { type: 'trait_delta', trait: 'hlt', delta: 1 } }
+            { id: 'd', text: '여행 대신 휴식을 택한다.', result: { type: 'trait_delta', domain: 'hlt', attribute: 'stress', traitType: 'high', delta: 1 } }
         ]
     },
     {
@@ -241,7 +241,7 @@ const GENERAL_EVENTS = [
             { id: 'a', text: '충분히 쉬고 회복한다.', result: { type: 'disease', disease: null } },
             { id: 'b', text: '약만 먹고 버틴다.', result: { type: 'disease', disease: '감기' } },
             { id: 'c', text: '무리해서 더 악화된다.', result: { type: 'disease', disease: '몸살' } },
-            { id: 'd', text: '체력을 키우기 시작한다.', result: { type: 'trait_delta', trait: 'hlt', delta: 1 } }
+            { id: 'd', text: '체력을 키우기 시작한다.', result: { type: 'trait_delta', domain: 'hlt', attribute: 'fitness', traitType: 'strong', delta: 1 } }
         ]
     },
     {
@@ -258,8 +258,8 @@ const GENERAL_EVENTS = [
         choices: [
             { id: 'a', text: '식단을 가볍게 조정한다.', result: { type: 'none' } },
             { id: 'b', text: '억지로 거르며 버틴다.', result: { type: 'disease', disease: '몸살' } },
-            { id: 'c', text: '건강 검진을 받아본다.', result: { type: 'trait_delta', trait: 'hlt', delta: 1 } },
-            { id: 'd', text: '기분 탓이라 생각하고 넘긴다.', result: { type: 'trait_delta', trait: 'val', delta: -1 } }
+            { id: 'c', text: '건강 검진을 받아본다.', result: { type: 'trait_delta', domain: 'hlt', attribute: 'vulnerability', traitType: 'none', delta: 1 } },
+            { id: 'd', text: '기분 탓이라 생각하고 넘긴다.', result: { type: 'trait_delta', domain: 'val', attribute: 'morality', traitType: 'principle', delta: -1 } }
         ]
     },
     {
@@ -274,10 +274,10 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '느긋하게 일상을 즐긴다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } },
-            { id: 'b', text: '여유를 건강 관리에 쓴다.', result: { type: 'trait_delta', trait: 'hlt', delta: 1 } },
+            { id: 'a', text: '느긋하게 일상을 즐긴다.', result: { type: 'trait_delta', domain: 'per', attribute: 'emotional', traitType: 'rich', delta: 1 } },
+            { id: 'b', text: '여유를 건강 관리에 쓴다.', result: { type: 'trait_delta', domain: 'hlt', attribute: 'stress', traitType: 'high', delta: 1 } },
             { id: 'c', text: '별다른 변화는 없다.', result: { type: 'none' } },
-            { id: 'd', text: '긴장이 풀려 무기력해진다.', result: { type: 'trait_delta', trait: 'per', delta: -1 } }
+            { id: 'd', text: '긴장이 풀려 무기력해진다.', result: { type: 'trait_delta', domain: 'per', attribute: 'selfManagement', traitType: 'diligent', delta: -1 } }
         ]
     },
     {
@@ -298,10 +298,10 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '지난 삶을 천천히 돌아본다.', result: { type: 'trait_delta', trait: 'val', delta: 1 } },
+            { id: 'a', text: '지난 삶을 천천히 돌아본다.', result: { type: 'trait_delta', domain: 'val', attribute: 'morality', traitType: 'emotion', delta: 1 } },
             { id: 'b', text: '앞으로 할 일을 정리한다.', result: { type: 'none' } },
-            { id: 'c', text: '살짝 우울해진다.', result: { type: 'trait_delta', trait: 'per', delta: -1 } },
-            { id: 'd', text: '산책을 시작한다.', result: { type: 'trait_delta', trait: 'hlt', delta: 1 } }
+            { id: 'c', text: '살짝 우울해진다.', result: { type: 'trait_delta', domain: 'per', attribute: 'emotional', traitType: 'rich', delta: -1 } },
+            { id: 'd', text: '산책을 시작한다.', result: { type: 'trait_delta', domain: 'hlt', attribute: 'fitness', traitType: 'strong', delta: 1 } }
         ]
     },
     {
@@ -316,10 +316,10 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '안전 운전을 최우선으로 한다.', result: { type: 'trait_delta', trait: 'val', delta: 1 } },
+            { id: 'a', text: '안전 운전을 최우선으로 한다.', result: { type: 'trait_delta', domain: 'val', attribute: 'risk', traitType: 'low', delta: 1 } },
             { id: 'b', text: '장거리 운전을 강행한다.', result: { type: 'disease', disease: '몸살' } },
             { id: 'c', text: '짧은 거리만 이동한다.', result: { type: 'none' } },
-            { id: 'd', text: '운전을 그만두고 대중교통을 탄다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } }
+            { id: 'd', text: '운전을 그만두고 대중교통을 탄다.', result: { type: 'trait_delta', domain: 'per', attribute: 'behavior', traitType: 'planned', delta: 1 } }
         ]
     },
     {
@@ -334,9 +334,9 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '작은 땅을 신중히 산다.', resultText: '알뜰한 투자로 알짜배기 토지를 마련했습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'val', delta: 1 }, { type: 'asset_delta', amount: -50_000_000 }] } },
-            { id: 'b', text: '무리하게 큰 계약을 한다.', resultText: '빚을 내서 무리한 계약을 맺었습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'val', delta: -1 }, { type: 'asset_delta', amount: -200_000_000 }] } },
-            { id: 'c', text: '가족과 공동명의로 산다.', resultText: '가족과 부담을 나눠 합리적으로 구매했습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', trait: 'per', delta: 1 }, { type: 'asset_delta', amount: -30_000_000 }] } },
+            { id: 'a', text: '작은 땅을 신중히 산다.', resultText: '알뜰한 투자로 알짜배기 토지를 마련했습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'val', attribute: 'goal', traitType: 'stability', delta: 1 }, { type: 'asset_delta', amount: -50_000_000 }] } },
+            { id: 'b', text: '무리하게 큰 계약을 한다.', resultText: '빚을 내서 무리한 계약을 맺었습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'val', attribute: 'risk', traitType: 'low', delta: -1 }, { type: 'asset_delta', amount: -200_000_000 }] } },
+            { id: 'c', text: '가족과 공동명의로 산다.', resultText: '가족과 부담을 나눠 합리적으로 구매했습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'per', attribute: 'conflict', traitType: 'negotiation', delta: 1 }, { type: 'asset_delta', amount: -30_000_000 }] } },
             { id: 'd', text: '마음만 먹고 보류한다.', result: { type: 'none' } }
         ]
     },
@@ -352,9 +352,9 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '정책 중심으로 선거를 치른다.', result: { type: 'trait_delta', trait: 'val', delta: 1 } },
-            { id: 'b', text: '공격적인 선거전을 펼친다.', result: { type: 'trait_delta', trait: 'per', delta: -1 } },
-            { id: 'c', text: '건강을 우선해 사퇴한다.', result: { type: 'trait_delta', trait: 'hlt', delta: 1 } },
+            { id: 'a', text: '정책 중심으로 선거를 치른다.', result: { type: 'trait_delta', domain: 'val', attribute: 'morality', traitType: 'principle', delta: 1 } },
+            { id: 'b', text: '공격적인 선거전을 펼친다.', result: { type: 'trait_delta', domain: 'per', attribute: 'conflict', traitType: 'negotiation', delta: -1 } },
+            { id: 'c', text: '건강을 우선해 사퇴한다.', result: { type: 'trait_delta', domain: 'hlt', attribute: 'stress', traitType: 'high', delta: 1 } },
             { id: 'd', text: '상징적으로만 도전한다.', result: { type: 'none' } }
         ]
     },
@@ -370,9 +370,9 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'a', text: '추억을 떠올리며 구매한다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } },
+            { id: 'a', text: '추억을 떠올리며 구매한다.', result: { type: 'trait_delta', domain: 'per', attribute: 'emotional', traitType: 'rich', delta: 1 } },
             { id: 'b', text: '지나가듯 보고 웃는다.', result: { type: 'none' } },
-            { id: 'c', text: '충동구매 후 후회한다.', result: { type: 'trait_delta', trait: 'val', delta: -1 } },
+            { id: 'c', text: '충동구매 후 후회한다.', result: { type: 'trait_delta', domain: 'val', attribute: 'risk', traitType: 'low', delta: -1 } },
             { id: 'd', text: '옷보다 건강부터 챙긴다.', result: { type: 'disease', disease: null } }
         ]
     },
@@ -391,7 +391,7 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'ok', text: '짝꿍과 연인이 되었습니다!', resultText: '짝꿍과 연인이 되었습니다! 첫사랑이 이루어지는 순간입니다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } }
+            { id: 'ok', text: '짝꿍과 연인이 되었습니다!', resultText: '짝꿍과 연인이 되었습니다! 첫사랑이 이루어지는 순간입니다.', result: { type: 'trait_delta', domain: 'per', attribute: 'emotional', traitType: 'direct', delta: 1 } }
         ]
     },
     {
@@ -407,7 +407,7 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'ok', text: '짝꿍이 당신을 역겨워합니다.', resultText: '짝꿍이 당신을 역겨워합니다. 거절당했습니다.', result: { type: 'trait_delta', trait: 'per', delta: -1 } }
+            { id: 'ok', text: '짝꿍이 당신을 역겨워합니다.', resultText: '짝꿍이 당신을 역겨워합니다. 거절당했습니다.', result: { type: 'trait_delta', domain: 'per', attribute: 'emotional', traitType: 'direct', delta: -1 } }
         ]
     },
     {
@@ -423,7 +423,7 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'ok', text: '짝꿍이 당신을 마음에 들어합니다.', resultText: '짝꿍이 당신을 마음에 들어합니다. 설레는 봄날입니다.', result: { type: 'trait_delta', trait: 'per', delta: 1 } }
+            { id: 'ok', text: '짝꿍이 당신을 마음에 들어합니다.', resultText: '짝꿍이 당신을 마음에 들어합니다. 설레는 봄날입니다.', result: { type: 'trait_delta', domain: 'per', attribute: 'interpersonal', traitType: 'selective', delta: 1 } }
         ]
     },
     {
@@ -439,7 +439,7 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'chaos', text: '그녀의 관심을 끌기 위해 소란을 피운다.', resultText: '학폭위원회에 소집되었습니다. 큰 사고를 쳤습니다.', result: { type: 'trait_delta', trait: 'val', delta: -2 } },
+            { id: 'chaos', text: '그녀의 관심을 끌기 위해 소란을 피운다.', resultText: '학폭위원회에 소집되었습니다. 큰 사고를 쳤습니다.', result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'val', attribute: 'morality', traitType: 'principle', delta: -1 }, { type: 'trait_delta', domain: 'val', attribute: 'relation', traitType: 'fairness', delta: -1 }] } },
             { id: 'quiet', text: '그저 조용히 있는다.',                    resultText: '누구에게나 그런 날은 있는 법이죠.',              result: { type: 'none' } }
         ]
     },
@@ -458,8 +458,8 @@ const GENERAL_EVENTS = [
         },
         choices: [
             { id: 'follow',   text: '따라간다.',                resultText: '그저 끔찍한 결과만이 기다리고 있었을 뿐입니다.\n당신은 사망했습니다.', result: { type: 'disease', disease: '혼절' } },
-            { id: 'reject',   text: '그건 안돼!! 집으로 돌아간다.', resultText: '당신은 방황 끝에 집에 무사히 도착했습니다.\n지능 +2, 건강 -1', result: { type: 'trait_delta', trait: 'val', delta: 2 } },
-            { id: 'gangster', text: '나쁜 패거리와 어울린다.',   resultText: '친구들이 집에는 돌아가라고 하네요.\n지능 -1, 매력 +2',             result: { type: 'trait_delta', trait: 'val', delta: -1 } }
+            { id: 'reject',   text: '그건 안돼!! 집으로 돌아간다.', resultText: '당신은 방황 끝에 집에 무사히 도착했습니다.\n지능 +2, 건강 -1', result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'val', attribute: 'priority', traitType: 'family', delta: 1 }, { type: 'trait_delta', domain: 'val', attribute: 'goal', traitType: 'stability', delta: 1 }] } },
+            { id: 'gangster', text: '나쁜 패거리와 어울린다.',   resultText: '친구들이 집에는 돌아가라고 하네요.\n지능 -1, 매력 +2',             result: { type: 'trait_delta', domain: 'val', attribute: 'relation', traitType: 'fairness', delta: -1 } }
         ]
     },
 
@@ -472,7 +472,7 @@ const GENERAL_EVENTS = [
         choices: [
             { id: 'perform',  text: '나의 매력을 보여줄 때가 온 것 같다.', result: { type: 'none' } },
             { id: 'peaceful', text: '평범한게 좋은거야.',                   resultText: '당신은 평온한 일상이 어울려보이네요.',       result: { type: 'none' } },
-            { id: 'boo',      text: '다른 친구들의 공연을 보며 야유한다.',  resultText: '모두가 당신에게 돌을 던집니다. 건강 -1, 매력 -5', result: { type: 'trait_delta', trait: 'per', delta: -2 } }
+            { id: 'boo',      text: '다른 친구들의 공연을 보며 야유한다.',  resultText: '모두가 당신에게 돌을 던집니다. 건강 -1, 매력 -5', result: { type: 'multi', results: [{ type: 'trait_delta', domain: 'per', attribute: 'interpersonal', traitType: 'active', delta: -1 }, { type: 'trait_delta', domain: 'per', attribute: 'conflict', traitType: 'negotiation', delta: -1 }] } }
         ]
     },
     {
@@ -504,7 +504,7 @@ const GENERAL_EVENTS = [
             ]
         },
         choices: [
-            { id: 'ok', text: '당신의 흑역사가 인터넷에 영원히 박제되었습니다.', resultText: '당신의 흑역사가 인터넷에 영원히 박제되었습니다.', result: { type: 'trait_delta', trait: 'per', delta: -1 } }
+            { id: 'ok', text: '당신의 흑역사가 인터넷에 영원히 박제되었습니다.', resultText: '당신의 흑역사가 인터넷에 영원히 박제되었습니다.', result: { type: 'trait_delta', domain: 'per', attribute: 'emotional', traitType: 'rich', delta: -1 } }
         ]
     }
 ];

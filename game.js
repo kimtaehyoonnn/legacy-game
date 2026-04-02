@@ -1071,12 +1071,41 @@ function getResultDescription(result) {
         }
         case 'trait_delta': {
             try {
-                const idx = DOMAIN_TRAIT_INDEX[result.domain];
+                const idx = result?.domain ? DOMAIN_TRAIT_INDEX[result.domain] : null;
                 const attrMeta = idx && idx.attributeByKey ? idx.attributeByKey[result.attribute] : null;
                 const typeMeta = attrMeta && attrMeta.typeByKey ? attrMeta.typeByKey[result.traitType] : null;
-                const sign = result.delta > 0 ? '+' : '';
-                const label = typeMeta ? typeMeta.typeLabel : result.traitType;
-                return `[${label}] 성향 ${sign}${result.delta}`;
+                const delta = Number.isFinite(result?.delta) ? result.delta : null;
+                const sign = delta !== null && delta > 0 ? '+' : '';
+
+                const attributeLabel = (() => {
+                    if (typeMeta?.attributeLabel) return typeMeta.attributeLabel;
+                    if (typeof attrMeta?.label === 'string' && attrMeta.label.trim()) return attrMeta.label;
+                    if (typeof result?.attribute === 'string' && result.attribute.trim()) return result.attribute;
+                    if (result?.trait === 'app') return '외모';
+                    if (typeof result?.trait === 'string' && result.trait.trim()) return result.trait;
+                    return '';
+                })();
+
+                const typeLabel = (() => {
+                    if (typeMeta?.typeLabel) return typeMeta.typeLabel;
+                    if (typeof result?.traitType === 'string' && result.traitType.trim()) return result.traitType;
+                    return '';
+                })();
+
+                const targetLabel = (() => {
+                    if (attributeLabel && typeLabel) return `${attributeLabel} - ${typeLabel}`;
+                    if (typeLabel) return typeLabel;
+                    if (attributeLabel) return attributeLabel;
+                    return '';
+                })();
+
+                if (delta === null) {
+                    return targetLabel ? `${targetLabel} 변화` : '성향이 변했다.';
+                }
+
+                return targetLabel
+                    ? `${targetLabel} ${sign}${delta}`
+                    : `성향 ${sign}${delta}`;
             } catch (e) {
                 return '성향이 변했다.';
             }

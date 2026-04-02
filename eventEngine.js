@@ -1,6 +1,7 @@
 const EVENT_GROUP_OPS = new Set(['and', 'or']);
 const EVENT_LEAF_OPERATORS = new Set(['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in']);
 const EVENT_RESULT_TYPES = new Set(['none', 'disease', 'trait_delta', 'set_job', 'asset_delta', 'multi']);
+const DOMAIN_TRAIT_DELTA_DOMAINS = new Set(['per', 'val', 'hlt']);
 
 const EVENT_RESULT_HANDLERS = {
     none: () => {},
@@ -62,6 +63,16 @@ function buildGameContext() {
     };
 }
 
+function getSchemaForDomainTraitDelta(domainKey) {
+    if (typeof getDomainTraitSchema !== 'function') return null;
+    return getDomainTraitSchema(domainKey);
+}
+
+function getSchemaAttribute(schema, attributeKey) {
+    if (!schema || !Array.isArray(schema.attributes)) return null;
+    return schema.attributes.find(attribute => attribute && attribute.key === attributeKey) || null;
+}
+
 function validateConditionNode(node, path, errors) {
     if (!isPlainObject(node)) {
         errors.push(`${path}: 조건은 객체여야 합니다.`);
@@ -118,9 +129,48 @@ function validateChoiceResult(result, path, errors) {
     }
 
     if (result.type === 'trait_delta') {
-        if (Object.prototype.hasOwnProperty.call(result, 'delta')) {
-            if (typeof result.delta !== 'number' || !Number.isFinite(result.delta)) {
-                errors.push(`${path}.delta: 숫자여야 합니다.`);
+        const hasDelta = Object.prototype.hasOwnProperty.call(result, 'delta');
+        if (hasDelta && (typeof result.delta !== 'number' || !Number.isFinite(result.delta))) {
+            errors.push(`${path}.delta: 숫자여야 합니다.`);
+        }
+
+        const legacyTrait = typeof result.trait === 'string' ? result.trait.trim() : '';
+        if (DOMAIN_TRAIT_DELTA_DOMAINS.has(legacyTrait)) {
+            errors.push(`${path}.trait: '${legacyTrait}' 축약형은 사용할 수 없습니다. domain/attribute/traitType 형태를 사용하세요.`);
+        }
+
+        const domainKey = typeof result.domain === 'string' ? result.domain.trim() : '';
+        if (DOMAIN_TRAIT_DELTA_DOMAINS.has(domainKey)) {
+            if (!hasDelta) {
+                errors.push(`${path}.delta: domain 기반 trait_delta는 delta가 필수입니다.`);
+            }
+
+            if (typeof result.attribute !== 'string' || !result.attribute.trim()) {
+                errors.push(`${path}.attribute: domain 기반 trait_delta는 attribute가 필수입니다.`);
+                return;
+            }
+
+            if (typeof result.traitType !== 'string' || !result.traitType.trim()) {
+                errors.push(`${path}.traitType: domain 기반 trait_delta는 traitType이 필수입니다.`);
+                return;
+            }
+
+            const schema = getSchemaForDomainTraitDelta(domainKey);
+            if (!schema) {
+                errors.push(`${path}.domain: '${domainKey}' 스키마를 찾을 수 없습니다.`);
+                return;
+            }
+
+            const attributeMeta = getSchemaAttribute(schema, result.attribute);
+            if (!attributeMeta) {
+                errors.push(`${path}.attribute: '${domainKey}' 도메인에 '${result.attribute}' 속성이 없습니다.`);
+                return;
+            }
+
+            const hasTraitType = Array.isArray(attributeMeta.types)
+                && attributeMeta.types.some(typeDef => typeDef && typeDef.key === result.traitType);
+            if (!hasTraitType) {
+                errors.push(`${path}.traitType: '${domainKey}.${result.attribute}'에 '${result.traitType}' 타입이 없습니다.`);
             }
         }
     }
