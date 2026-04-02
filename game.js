@@ -1136,6 +1136,21 @@ function setSpeed(s, btn) { currentSpeed = s; document.querySelectorAll('.speed-
 function updateCamera() { if (isSliding) { if (targetScale != null) { scale += (targetScale - scale) * 0.1; if (Math.abs(targetScale - scale) < 0.005) { scale = targetScale; targetScale = null; } } if (focusTarget) { targetCamX = (canvas.width / 2) - (focusTarget.x * scale); targetCamY = (canvas.height / 2) - (focusTarget.y * scale); } camX += (targetCamX - camX) * 0.1; camY += (targetCamY - camY) * 0.1; if (Math.abs(targetCamX - camX) < 1 && Math.abs(targetCamY - camY) < 1 && targetScale == null) { isSliding = false; focusTarget = null; } } }
 
 let dragMoved = false;
+
+function clampScale(nextScale) {
+    return Math.max(0.2, Math.min(2, nextScale));
+}
+
+function setScaleAtScreenPoint(nextScale, screenX, screenY) {
+    const clamped = clampScale(nextScale);
+    if (clamped === scale) return;
+    const worldX = (screenX - camX) / scale;
+    const worldY = (screenY - camY) / scale;
+    scale = clamped;
+    camX = screenX - worldX * scale;
+    camY = screenY - worldY * scale;
+}
+
 canvas.addEventListener('mousedown', (e) => { isDragging = true; dragMoved = false; });
 canvas.addEventListener('mousemove', e => { 
     if (isDragging) { 
@@ -1201,9 +1216,9 @@ function closeStatus() {
 }
 
 canvas.addEventListener('touchstart', e => { if (e.touches.length === 2) { initialPinchDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); isDragging = false; } else { isDragging = true; lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY; } }, {passive: false});
-canvas.addEventListener('touchmove', e => { e.preventDefault(); if (e.touches.length === 2) { const currentDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); if (initialPinchDistance) { scale = Math.max(0.2, Math.min(2, scale + (currentDistance - initialPinchDistance) * 0.005)); initialPinchDistance = currentDistance; } } else if (isDragging && e.touches.length === 1) { camX += e.touches[0].clientX - lastTouchX; camY += e.touches[0].clientY - lastTouchY; lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY; isSliding = false; } }, {passive: false});
+canvas.addEventListener('touchmove', e => { e.preventDefault(); if (e.touches.length === 2) { const currentDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); if (initialPinchDistance) { const rect = canvas.getBoundingClientRect(); const centerX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left; const centerY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top; setScaleAtScreenPoint(scale + (currentDistance - initialPinchDistance) * 0.005, centerX, centerY); initialPinchDistance = currentDistance; isSliding = false; } } else if (isDragging && e.touches.length === 1) { camX += e.touches[0].clientX - lastTouchX; camY += e.touches[0].clientY - lastTouchY; lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY; isSliding = false; } }, {passive: false});
 canvas.addEventListener('touchend', e => { if (e.touches.length < 2) initialPinchDistance = null; if (e.touches.length === 0) isDragging = false; });
-canvas.addEventListener('wheel', e => { e.preventDefault(); scale = Math.max(0.2, Math.min(2, scale + e.deltaY * -0.001)); }, { passive: false });
+canvas.addEventListener('wheel', e => { e.preventDefault(); const rect = canvas.getBoundingClientRect(); const screenX = e.clientX - rect.left; const screenY = e.clientY - rect.top; setScaleAtScreenPoint(scale + e.deltaY * -0.001, screenX, screenY); isSliding = false; }, { passive: false });
 
 // 자동선택: 이벤트 모달이 열릴 때 감지
 (function() {
